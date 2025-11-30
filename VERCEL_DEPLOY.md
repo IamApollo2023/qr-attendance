@@ -130,3 +130,4 @@ Every time you push to your main branch:
 - Ensure RLS policies allow public access
 
 
+
