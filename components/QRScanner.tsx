@@ -7,6 +7,7 @@ import { Camera, CameraOff, CheckCircle2 } from "lucide-react";
 import { BrowserMultiFormatReader, NotFoundException } from "@zxing/library";
 import { supabase, AttendanceRecord } from "@/lib/supabase";
 import { getCurrentUserProfile } from "@/lib/auth";
+import Swal from "sweetalert2";
 
 interface ScannedAttendee {
   attendee_id: string;
@@ -79,20 +80,66 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
 
+      // More pleasant success sound (two-tone chime)
       oscillator.frequency.value = 800;
       oscillator.type = "sine";
 
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(
         0.01,
-        audioContext.currentTime + 0.2
+        audioContext.currentTime + 0.15
       );
 
       oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.2);
+      oscillator.stop(audioContext.currentTime + 0.15);
+
+      // Second tone for chime effect
+      setTimeout(() => {
+        const oscillator2 = audioContext.createOscillator();
+        const gainNode2 = audioContext.createGain();
+        oscillator2.connect(gainNode2);
+        gainNode2.connect(audioContext.destination);
+        oscillator2.frequency.value = 1000;
+        oscillator2.type = "sine";
+        gainNode2.gain.setValueAtTime(0.25, audioContext.currentTime);
+        gainNode2.gain.exponentialRampToValueAtTime(
+          0.01,
+          audioContext.currentTime + 0.15
+        );
+        oscillator2.start(audioContext.currentTime);
+        oscillator2.stop(audioContext.currentTime + 0.15);
+      }, 100);
     } catch (err) {
       // Audio context might not be available, ignore
       console.warn("Could not play sound:", err);
+    }
+  };
+
+  // Play error sound
+  const playErrorSound = () => {
+    try {
+      const audioContext = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Lower, harsher tone for error
+      oscillator.frequency.value = 400;
+      oscillator.type = "sawtooth";
+
+      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.3
+      );
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (err) {
+      console.warn("Could not play error sound:", err);
     }
   };
 
@@ -156,13 +203,22 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         }
 
         if (existing) {
-          // Duplicate scan - show warning but don't add to list
-          setError(
-            `Attendee ${attendeeId} already scanned at ${new Date(
+          // Duplicate scan - show warning
+          playErrorSound();
+          await Swal.fire({
+            icon: "warning",
+            title: "Already Scanned",
+            text: `Attendee ${attendeeId} was already scanned at ${new Date(
               existing.scanned_at
-            ).toLocaleTimeString()}`
-          );
-          setTimeout(() => setError(null), 3000);
+            ).toLocaleTimeString()}`,
+            confirmButtonColor: "#f59e0b",
+            confirmButtonText: "OK",
+            timer: 3000,
+            timerProgressBar: true,
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+          });
           setIsProcessing(false);
           return;
         }
@@ -207,6 +263,20 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         // Play success sound
         playSuccessSound();
 
+        // Show success alert
+        await Swal.fire({
+          icon: "success",
+          title: "Attendance Recorded!",
+          text: `Attendee ${attendeeId} scanned successfully`,
+          confirmButtonColor: "#10b981",
+          confirmButtonText: "OK",
+          timer: 2000,
+          timerProgressBar: true,
+          toast: true,
+          position: "top-end",
+          showConfirmButton: false,
+        });
+
         // Call callback if provided
         if (onScanSuccess) {
           onScanSuccess(attendeeId);
@@ -215,10 +285,27 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         setError(null);
       } catch (err: any) {
         console.error("Error saving attendance:", err);
-        setError(
-          "Failed to save attendance: " + (err.message || "Unknown error")
-        );
-        setTimeout(() => setError(null), 3000);
+        const errorMessage =
+          err.message || "Unknown error occurred while saving attendance";
+        
+        // Play error sound
+        playErrorSound();
+        
+        // Show error alert
+        await Swal.fire({
+          icon: "error",
+          title: "Scan Failed",
+          text: errorMessage,
+          confirmButtonColor: "#ef4444",
+          confirmButtonText: "OK",
+          timer: 4000,
+          timerProgressBar: true,
+          toast: true,
+          position: "top-end",
+          showConfirmButton: true,
+        });
+        
+        setError(null);
       } finally {
         setIsProcessing(false);
       }

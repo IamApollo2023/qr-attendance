@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Poppins } from 'next/font/google'
+import 'sweetalert2/dist/sweetalert2.min.css'
 import './globals.css'
 
 const poppins = Poppins({
