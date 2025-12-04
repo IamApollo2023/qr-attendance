@@ -2,9 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
 body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
+@layer base {
+  :root {
+    /* Brand primary: #5b84ad -> hsl(210 33% 51%) */
+    --primary: 210 33% 51%;
+    --primary-foreground: 0 0% 100%;
+    /* Chart colors derived from primary */
+    --chart-1: 210 33% 51%;
+    --chart-2: 210 40% 70%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 210 33% 51%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 33% 51%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 210 33% 51%;
+  }
+  .dark {
+    --primary: 210 33% 60%;
+    --primary-foreground: 0 0% 100%;
+    --chart-1: 210 33% 65%;
+    --chart-2: 210 40% 80%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 210 33% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 33% 60%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 210 33% 60%;
+  }
+}
+
+@layer utilities {
+  @keyframes scanner-line {
+    0% {
+      transform: translateY(15%);
+      opacity: 0;
+    }
+    20% {
+      opacity: 1;
+    }
+    50% {
+      transform: translateY(80%);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(15%);
+      opacity: 0;
+    }
+  }
+
+  .animate-scan {
+    animation: scanner-line 2.4s ease-in-out infinite;
+  }
+}
+
+/* NOTE:
+ * Do NOT add `@apply border-border` / `bg-background` / `text-foreground`
+ * here unless you also define matching color tokens in `tailwind.config.js`.
+ * Right now we only define `sidebar-*` colors, so those utilities do not exist.
+ */

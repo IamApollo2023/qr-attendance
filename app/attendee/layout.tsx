@@ -1,10 +1,7 @@
 export default function AttendeeLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  return children
+  return children;
 }
-
-
-

@@ -44,3 +44,5 @@ yarn.lock
 *.tsbuildinfo
 next-env.d.ts
 
+
+.vercel

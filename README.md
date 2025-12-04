@@ -15,7 +15,8 @@ A production-ready web application for event facilitators to scan QR codes and t
 
 ## Tech Stack
 
-- **Next.js 14+** with App Router
+- **Next.js 16** with App Router
+- **React 19** with React Compiler
 - **Tailwind CSS** for styling
 - **Supabase** for database (real-time sync across devices)
 - **@zxing/library** for QR code scanning
@@ -23,6 +24,7 @@ A production-ready web application for event facilitators to scan QR codes and t
 ## Setup
 
 1. **Install dependencies:**
+
    ```bash
    pnpm install
    ```
@@ -35,6 +37,7 @@ A production-ready web application for event facilitators to scan QR codes and t
 
 3. **Configure environment variables:**
    Create a `.env.local` file in the root directory:
+
    ```env
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -49,12 +52,14 @@ A production-ready web application for event facilitators to scan QR codes and t
    - Go to **Authentication** → **Users** in Supabase dashboard
    - Create users manually, or enable email signup
    - **Important**: After creating a user, update their role in the `user_profiles` table:
-     ```sql
+
+   ```sql
      UPDATE user_profiles SET role = 'admin' WHERE email = 'admin@example.com';
      UPDATE user_profiles SET role = 'scanner' WHERE email = 'scanner@example.com';
-     ```
+   ```
 
 6. **Run the development server:**
+
    ```bash
    pnpm dev
    ```
@@ -101,6 +106,7 @@ See [NGROK_SETUP.md](./NGROK_SETUP.md) for detailed instructions.
 ## Data Storage
 
 All attendance data is stored in **Supabase**, providing:
+
 - ✅ **Real-time sync** - Scans from phone appear instantly on admin page
 - ✅ **Persistent storage** - Data survives server restarts
 - ✅ **Multi-device** - Phone and laptop share the same database
@@ -110,6 +116,7 @@ All attendance data is stored in **Supabase**, providing:
 ### Data Structure
 
 Each attendance record contains:
+
 - `id` (UUID) - Unique identifier
 - `attendee_id` (TEXT) - The unique identifier from the QR code
 - `scanned_at` (TIMESTAMPTZ) - When the scan occurred
@@ -124,6 +131,7 @@ Each attendance record contains:
 ### Recommended: Deploy to Vercel
 
 Vercel is the best option for this app:
+
 - ✅ **Permanent HTTPS URL** (no changing URLs like ngrok)
 - ✅ **Free tier** with generous limits
 - ✅ **Automatic HTTPS** (required for camera)
@@ -133,6 +141,7 @@ Vercel is the best option for this app:
 See [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) for detailed deployment instructions.
 
 **Quick steps:**
+
 1. Push code to GitHub
 2. Import to Vercel
 3. Add environment variables (Supabase URL & key)
@@ -145,6 +154,7 @@ See [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) for detailed deployment instructions.
 ## Error Handling
 
 The app handles:
+
 - Camera permission denied
 - No camera found
 - Invalid QR codes
@@ -162,4 +172,3 @@ The app handles:
 ## License
 
 MIT
-

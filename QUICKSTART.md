@@ -33,6 +33,7 @@ pnpm dev
 ## Testing Without Real QR Codes
 
 You can test the app by:
+
 1. Generating a QR code online with any text (e.g., "ATTENDEE-001")
 2. Displaying it on another device or printing it
 3. Scanning it with the app
@@ -40,16 +41,19 @@ You can test the app by:
 ## Troubleshooting
 
 ### Camera Not Working
+
 - Make sure you're using HTTPS in production (localhost works for development)
 - Check browser permissions for camera access
 - Try a different browser (Chrome/Edge recommended)
 
 ### Storage Issues
+
 - Make sure your browser supports IndexedDB (all modern browsers do)
 - Check browser storage permissions (usually automatic)
 - If data isn't persisting, check if you're in private/incognito mode (some browsers restrict storage)
 
 ### Build Errors
+
 - Make sure all dependencies are installed: `pnpm install`
 - Check Node.js version: `node --version` (should be 18+)
 
@@ -62,10 +66,10 @@ You can test the app by:
 ## Production Deployment
 
 Remember:
+
 - **HTTPS is required** for camera access in production
 - **No environment variables needed** - everything works out of the box
 - Test on mobile devices before going live
 - Data is stored per browser/device, so each user has their own attendance records
 
 Happy scanning! 🎉
-

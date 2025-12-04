@@ -3,11 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Camera, CameraOff, CheckCircle2 } from "lucide-react";
+import { Camera, CameraOff, CheckCircle2, AlertCircle } from "lucide-react";
 import { BrowserMultiFormatReader, NotFoundException } from "@zxing/library";
-import { supabase, AttendanceRecord } from "@/lib/supabase";
-import { getCurrentUserProfile } from "@/lib/auth";
-import Swal from "sweetalert2";
+import { supabase, signOut, type AttendanceRecord } from "@/lib";
+import { useToastContext } from "@/components/ToastProvider";
 
 interface ScannedAttendee {
   attendee_id: string;
@@ -38,24 +37,19 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const processedCodesRef = useRef<Set<string>>(new Set());
+  const { success, error: showError, warning, info } = useToastContext();
+  const [lastSync, setLastSync] = useState(() => new Date());
 
-  // Check authentication on mount
+  // Auth is already verified by middleware - set authChecked immediately
+  // This prevents redundant auth fetches
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const profile = await getCurrentUserProfile();
-        if (!profile || profile.role !== "scanner") {
-          router.push("/scanner/login");
-          return;
-        }
-        setAuthChecked(true);
-      } catch (error) {
-        console.error("Auth check failed:", error);
-        router.push("/scanner/login");
-      }
-    };
-    checkAuth();
-  }, [router]);
+    setAuthChecked(true);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => setLastSync(new Date()), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Initialize QR code reader
   useEffect(() => {
@@ -72,8 +66,9 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
   // Play success sound
   const playSuccessSound = () => {
     try {
-      const audioContext = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
+      const audioContext = new (
+        window.AudioContext || (window as any).webkitAudioContext
+      )();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
@@ -118,8 +113,9 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
   // Play error sound
   const playErrorSound = () => {
     try {
-      const audioContext = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
+      const audioContext = new (
+        window.AudioContext || (window as any).webkitAudioContext
+      )();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
@@ -188,6 +184,25 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
       setIsProcessing(true);
 
       try {
+        // FIRST: Validate that member exists in members table (STRICT VALIDATION)
+        const { data: member, error: memberError } = await supabase
+          .from("members")
+          .select("*")
+          .eq("member_id", attendeeId)
+          .single();
+
+        if (memberError || !member) {
+          // Member not registered - REJECT scan
+          playErrorSound();
+          showError(
+            "Member Not Registered",
+            `Member ID ${attendeeId} is not registered in the system. Please register the member first.`,
+            4000
+          );
+          setIsProcessing(false);
+          return;
+        }
+
         // Check for duplicate in database
         const { data: existing, error: queryError } = await supabase
           .from("qr_attendance")
@@ -205,20 +220,13 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         if (existing) {
           // Duplicate scan - show warning
           playErrorSound();
-          await Swal.fire({
-            icon: "warning",
-            title: "Already Scanned",
-            text: `Attendee ${attendeeId} was already scanned at ${new Date(
+          warning(
+            "Already Scanned",
+            `${member.first_name} ${member.last_name} (${attendeeId}) was already scanned at ${new Date(
               existing.scanned_at
             ).toLocaleTimeString()}`,
-            confirmButtonColor: "#f59e0b",
-            confirmButtonText: "OK",
-            timer: 3000,
-            timerProgressBar: true,
-            toast: true,
-            position: "top-end",
-            showConfirmButton: false,
-          });
+            3000
+          );
           setIsProcessing(false);
           return;
         }
@@ -228,18 +236,19 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
           data: { user },
         } = await supabase.auth.getUser();
 
-        // Save to Supabase
+        // Save to Supabase with member_id foreign key
         const attendanceRecord: AttendanceRecord = {
           attendee_id: attendeeId,
           scanned_at: new Date().toISOString(),
           event_id: eventId || "default",
         };
 
-        // Add scanned_by if user is authenticated
+        // Add scanned_by and member_id if user is authenticated
         const recordToInsert: any = { ...attendanceRecord };
         if (user) {
           recordToInsert.scanned_by = user.id;
         }
+        recordToInsert.member_id = member.id; // Link to members table
 
         const { data: insertedRecord, error: insertError } = await supabase
           .from("qr_attendance")
@@ -251,11 +260,11 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
           throw insertError;
         }
 
-        // Add to local list
+        // Add to local list with member name
         const newAttendee: ScannedAttendee = {
           attendee_id: attendeeId,
           scanned_at: insertedRecord.scanned_at,
-          name: attendeeId,
+          name: `${member.first_name} ${member.last_name}`,
         };
 
         setScannedAttendees((prev) => [newAttendee, ...prev]);
@@ -263,19 +272,12 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         // Play success sound
         playSuccessSound();
 
-        // Show success alert
-        await Swal.fire({
-          icon: "success",
-          title: "Attendance Recorded!",
-          text: `Attendee ${attendeeId} scanned successfully`,
-          confirmButtonColor: "#10b981",
-          confirmButtonText: "OK",
-          timer: 2000,
-          timerProgressBar: true,
-          toast: true,
-          position: "top-end",
-          showConfirmButton: false,
-        });
+        // Show success alert with member name
+        success(
+          "Attendance Recorded!",
+          `${member.first_name} ${member.last_name} (${attendeeId}) scanned successfully`,
+          2000
+        );
 
         // Call callback if provided
         if (onScanSuccess) {
@@ -287,24 +289,13 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         console.error("Error saving attendance:", err);
         const errorMessage =
           err.message || "Unknown error occurred while saving attendance";
-        
+
         // Play error sound
         playErrorSound();
-        
+
         // Show error alert
-        await Swal.fire({
-          icon: "error",
-          title: "Scan Failed",
-          text: errorMessage,
-          confirmButtonColor: "#ef4444",
-          confirmButtonText: "OK",
-          timer: 4000,
-          timerProgressBar: true,
-          toast: true,
-          position: "top-end",
-          showConfirmButton: true,
-        });
-        
+        showError("Scan Failed", errorMessage, 4000);
+
         setError(null);
       } finally {
         setIsProcessing(false);
@@ -477,27 +468,103 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <Image
-            src="/logo.png"
-            alt="Logo"
-            width={32}
-            height={32}
-            className="rounded-full"
-          />
-          <h1 className="text-xl font-bold text-gray-900">
-            Jesus is Lord Luna
-          </h1>
+      <div className="bg-gradient-to-r from-[#1c2d44] via-[#274464] to-[#5b84ad] px-3 md:px-6 py-3 md:py-4 shadow-lg text-white">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="Logo"
+              width={40}
+              height={40}
+              className="rounded-2xl border border-white/40 w-9 h-9 md:w-10 md:h-10"
+            />
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.25em] text-white/70">
+                QR Scanner
+              </p>
+              <h1 className="text-sm md:text-2xl font-semibold">
+                Jesus is Lord Luna
+              </h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <button
+              onClick={() => {
+                const alerts = [
+                  () =>
+                    success(
+                      "Test Success",
+                      "This is a success message for testing",
+                      3000
+                    ),
+                  () =>
+                    showError(
+                      "Test Error",
+                      "This is an error message for testing",
+                      3000
+                    ),
+                  () =>
+                    warning(
+                      "Test Warning",
+                      "This is a warning message for testing",
+                      3000
+                    ),
+                  () =>
+                    info(
+                      "Test Info",
+                      "This is an info message for testing",
+                      3000
+                    ),
+                ];
+                const randomAlert =
+                  alerts[Math.floor(Math.random() * alerts.length)];
+                randomAlert();
+              }}
+              className="p-1.5 md:p-2 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur transition-colors"
+              aria-label="Test alerts"
+              title="Test Alert UI"
+            >
+              <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
+            </button>
+            <button
+              onClick={toggleCamera}
+              className="rounded-full bg-white/15 hover:bg-white/25 p-1.5 md:p-2 transition-colors"
+              aria-label="Switch camera"
+              title="Switch camera"
+            >
+              <Camera className="w-4 h-4 md:w-5 md:h-5 text-white" />
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await signOut();
+                  router.push("/scanner/login");
+                } catch (error) {
+                  console.error("Sign out failed:", error);
+                }
+              }}
+              className="px-2.5 md:px-4 py-1.5 md:py-2 rounded-full bg-white text-[#1c2d44] text-xs md:text-sm font-semibold shadow-sm hover:shadow transition-shadow"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
-        <button
-          onClick={toggleCamera}
-          className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-gray-700"
-          aria-label="Switch camera"
-          title="Switch camera"
-        >
-          <Camera className="w-6 h-6" />
-        </button>
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] md:text-xs text-white/80">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1">
+            <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
+            Ready for next scan
+          </span>
+          <span className="inline-flex items-center gap-1">
+            Event ID:
+            <strong className="tracking-wide">
+              {eventId ?? "default"}
+            </strong>
+          </span>
+          <span className="hidden sm:inline-flex items-center gap-1">
+            Last sync:
+            <span className="font-medium">{lastSync.toLocaleTimeString()}</span>
+          </span>
+        </div>
       </div>
 
       {/* Camera View */}
@@ -514,19 +581,25 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="relative">
               {/* Scanning frame - responsive sizing */}
-              <div className="w-64 h-64 sm:w-80 sm:h-80 border-4 border-green-500 rounded-lg shadow-lg">
+              <div className="relative w-[70vw] max-w-xs aspect-square rounded-[32px] border border-white/40 bg-white/5 backdrop-blur-sm shadow-2xl">
+                <div className="absolute inset-4 rounded-3xl border border-dashed border-emerald-200/60" />
                 {/* Corner indicators */}
-                <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-green-500 rounded-tl-lg"></div>
-                <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-green-500 rounded-tr-lg"></div>
-                <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-green-500 rounded-bl-lg"></div>
-                <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-green-500 rounded-br-lg"></div>
+                <div className="absolute inset-0">
+                  <div className="absolute left-4 top-4 h-6 w-6 rounded-tl-3xl border-t-2 border-l-2 border-emerald-300" />
+                  <div className="absolute right-4 top-4 h-6 w-6 rounded-tr-3xl border-t-2 border-r-2 border-emerald-300" />
+                  <div className="absolute left-4 bottom-4 h-6 w-6 rounded-bl-3xl border-b-2 border-l-2 border-emerald-300" />
+                  <div className="absolute right-4 bottom-4 h-6 w-6 rounded-br-3xl border-b-2 border-r-2 border-emerald-300" />
+                </div>
+                {/* Scanning line animation */}
+                <div className="absolute inset-0 overflow-hidden rounded-[32px]">
+                  <div className="absolute inset-x-4 h-1.5 bg-gradient-to-r from-transparent via-emerald-300 to-transparent rounded-full animate-scan" />
+                </div>
               </div>
-              {/* Scanning line animation */}
-              <div className="absolute top-0 left-0 w-full h-1 bg-green-500 animate-pulse"></div>
               {/* Instruction text */}
               <div className="absolute -bottom-12 left-0 right-0 text-center">
-                <p className="text-white text-sm font-medium bg-black/50 px-4 py-2 rounded-lg inline-block">
-                  Position QR code within frame
+                <p className="text-white text-xs md:text-sm font-medium bg-black/60 px-3 md:px-4 py-1.5 md:py-2 rounded-full inline-flex items-center gap-2 justify-center">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                  Align QR code within the glowing frame
                 </p>
               </div>
             </div>
@@ -535,30 +608,30 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
 
         {/* Error Message */}
         {error && (
-          <div className="absolute top-4 left-4 right-4 bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg z-10">
-            <p className="text-sm font-medium">{error}</p>
+          <div className="absolute top-4 left-4 right-4 bg-red-600 text-white px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-lg z-10">
+            <p className="text-xs md:text-sm font-medium">{error}</p>
           </div>
         )}
 
         {/* Success Flash */}
         {isProcessing && (
-          <div className="absolute inset-0 bg-green-500 opacity-30 animate-pulse pointer-events-none"></div>
+          <div className="absolute inset-0 bg-emerald-400/25 backdrop-blur-[1px] animate-pulse pointer-events-none" />
         )}
 
         {/* Permission Prompt */}
         {hasPermission === false && (
           <div className="absolute inset-0 flex items-center justify-center bg-white p-4">
             <div className="text-center max-w-sm">
-              <CameraOff className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h2 className="text-xl font-bold mb-2 text-gray-900">
+              <CameraOff className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 text-gray-400" />
+              <h2 className="text-base md:text-xl font-bold mb-2 text-gray-900">
                 Camera Access Required
               </h2>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 text-sm md:text-base mb-4">
                 Please allow camera access to scan QR codes for attendance.
               </p>
               <button
                 onClick={requestCameraPermission}
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                className="px-4 md:px-6 py-2 md:py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm md:text-base font-medium transition-colors"
               >
                 Grant Camera Permission
               </button>
@@ -571,7 +644,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
           <div className="absolute inset-0 flex items-center justify-center bg-white">
             <button
               onClick={requestCameraPermission}
-              className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-lg transition-colors shadow-lg"
+              className="px-6 md:px-8 py-3 md:py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm md:text-lg transition-colors shadow-lg"
             >
               Start Scanning
             </button>
@@ -581,14 +654,14 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
 
       {/* Scanned Attendees List */}
       <div className="bg-white border-t border-gray-200 shadow-lg">
-        <div className="px-4 py-2 border-b border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-700">
+        <div className="px-3 md:px-4 py-1.5 md:py-2 border-b border-gray-200">
+          <h2 className="text-xs md:text-sm font-semibold text-gray-700">
             Scanned Attendees ({scannedAttendees.length})
           </h2>
         </div>
         <div className="max-h-48 overflow-y-auto">
           {scannedAttendees.length === 0 ? (
-            <div className="px-4 py-8 text-center text-gray-500 text-sm">
+            <div className="px-3 md:px-4 py-6 md:py-8 text-center text-gray-500 text-xs md:text-sm">
               No attendees scanned yet. Point camera at QR code to begin.
             </div>
           ) : (
@@ -596,18 +669,18 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
               {scannedAttendees.map((attendee, index) => (
                 <div
                   key={`${attendee.attendee_id}-${attendee.scanned_at}-${index}`}
-                  className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                  className="px-3 md:px-4 py-2 md:py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex-1">
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-sm md:text-base text-gray-900">
                       {attendee.attendee_id}
                     </div>
-                    <div className="text-xs text-gray-600">
+                    <div className="text-[10px] md:text-xs text-gray-600">
                       {new Date(attendee.scanned_at).toLocaleString()}
                     </div>
                   </div>
-                  <div className="ml-4">
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  <div className="ml-3 md:ml-4">
+                    <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
                   </div>
                 </div>
               ))}
