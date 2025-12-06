@@ -1,7 +1,7 @@
 // Shared type definitions used across the application
 
 // User and Authentication Types
-export type UserRole = "scanner" | "admin";
+export type UserRole = "scanner" | "admin" | "finance";
 
 export interface UserProfile {
   id: string;
@@ -28,10 +28,9 @@ export interface AttendanceRecord {
 }
 
 // Member Types
-export type MembershipType =
-  | "MEMBER"
-  | "WORKER"
-  | "PASTOR";
+export type MembershipType = "WSAM-LGAM" | "LGAM" | "WSAM" | "Attendee";
+
+export type ClassificationType = "MEMBER" | "WORKER" | "PASTOR";
 
 export interface Member {
   id: string;
@@ -51,6 +50,7 @@ export interface Member {
   gender: "male" | "female";
   age_category: "Children" | "KKB" | "YAN" | "Men" | "Women";
   membership_type: MembershipType;
+  classification?: ClassificationType;
   created_at: string;
   updated_at: string;
   created_by?: string;
@@ -58,6 +58,14 @@ export interface Member {
 
 // Activity Types
 export type ActivityStatus = "active" | "inactive";
+
+export type ActivityType =
+  | "life-group"
+  | "icare"
+  | "water-baptism"
+  | "house-blessings"
+  | "necros-services"
+  | "non-jil-related";
 
 export interface Activity {
   id: string;
@@ -70,6 +78,24 @@ export interface Activity {
   created_at: string;
   updated_at: string;
   created_by?: string;
+}
+
+export interface ActivityAlbum {
+  id: string;
+  activity_type: ActivityType;
+  caption: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  images?: ActivityAlbumImage[];
+}
+
+export interface ActivityAlbumImage {
+  id: string;
+  album_id: string;
+  image_url: string;
+  image_order: number;
+  created_at: string;
 }
 
 // Login Types

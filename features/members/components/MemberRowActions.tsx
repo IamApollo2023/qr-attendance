@@ -21,7 +21,7 @@ export function MemberRowActions({
   onDelete,
 }: MemberRowActionsProps) {
   return (
-    <td className="px-4 py-3 mobile:px-2 mobile:py-2 relative text-center">
+    <div className="relative text-center">
       <div className="flex justify-center items-center">
         <button
           onClick={onToggle}
@@ -53,6 +53,6 @@ export function MemberRowActions({
           </button>
         </div>
       )}
-    </td>
+    </div>
   );
 }

@@ -42,5 +42,3 @@ export interface ActivitiesManagementProps {
     pagination: PaginationInfo | null;
   };
 }
-
-

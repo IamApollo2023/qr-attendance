@@ -7,7 +7,7 @@ const GeoMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[320px] w-full items-center justify-center rounded-lg border border-dashed border-gray-200 text-sm text-gray-500">
+      <div className="flex h-[320px] w-full items-center justify-center rounded-lg border border-dashed border-gray-200 text-xs md:text-sm text-gray-500">
         Loading map…
       </div>
     ),
@@ -19,10 +19,10 @@ export default function GeoPage() {
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-4 py-4 md:gap-6 md:py-6">
         <div className="px-4 lg:px-6">
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-lg md:text-3xl font-semibold tracking-tight">
             Geo Mapping
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs md:text-base text-muted-foreground">
             Barangay-level overview of members in Luna, La Union.
           </p>
         </div>
@@ -33,8 +33,3 @@ export default function GeoPage() {
     </div>
   );
 }
-
-
-
-
-

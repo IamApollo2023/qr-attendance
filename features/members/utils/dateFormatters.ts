@@ -31,12 +31,3 @@ export function formatRelativeTime(timestamp: string): string {
   const days = Math.floor(diffInSeconds / 86400);
   return `${days} day${days !== 1 ? "s" : ""} ago`;
 }
-
-
-
-
-
-
-
-
-

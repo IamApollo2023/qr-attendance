@@ -21,6 +21,10 @@ export function useMembers({
 }: UseMembersProps) {
   const searchParams = useSearchParams();
   const currentPageFromUrl = parseInt(searchParams.get("page") || "1", 10);
+  const currentPageSizeFromUrl = parseInt(
+    searchParams.get("pageSize") || "20",
+    10
+  );
 
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [pagination, setPagination] = useState<PaginationInfo | null>(
@@ -30,10 +34,10 @@ export function useMembers({
   const isInitialMount = useRef(true);
 
   const loadMembers = useCallback(
-    async (page: number = 1) => {
+    async (page: number = 1, pageSize: number = 20) => {
       setLoading(true);
       try {
-        const result = await memberRepository.getPaginated({ page });
+        const result = await memberRepository.getPaginated({ page, pageSize });
         setMembers(result.members);
         setPagination(result.pagination);
       } catch (error) {
@@ -57,10 +61,13 @@ export function useMembers({
     }
 
     const pageFromUrl = parseInt(searchParams.get("page") || "1", 10);
-    if (pageFromUrl !== (pagination?.page || 1)) {
-      loadMembers(pageFromUrl);
+    const pageSizeFromUrl = parseInt(searchParams.get("pageSize") || "20", 10);
+    const currentPage = pagination?.page || 1;
+    const currentPageSize = pagination?.pageSize || 20;
+
+    if (pageFromUrl !== currentPage || pageSizeFromUrl !== currentPageSize) {
+      loadMembers(pageFromUrl, pageSizeFromUrl);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Set up real-time subscription
@@ -77,7 +84,9 @@ export function useMembers({
         async () => {
           // Refetch current page when members change
           const currentPage = pagination?.page || currentPageFromUrl;
-          await loadMembers(currentPage);
+          const currentPageSize =
+            pagination?.pageSize || currentPageSizeFromUrl;
+          await loadMembers(currentPage, currentPageSize);
         }
       )
       .subscribe();
@@ -85,7 +94,13 @@ export function useMembers({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [pagination?.page, currentPageFromUrl, loadMembers]);
+  }, [
+    pagination?.page,
+    pagination?.pageSize,
+    currentPageFromUrl,
+    currentPageSizeFromUrl,
+    loadMembers,
+  ]);
 
   return {
     members,
@@ -94,12 +109,3 @@ export function useMembers({
     loadMembers,
   };
 }
-
-
-
-
-
-
-
-
-

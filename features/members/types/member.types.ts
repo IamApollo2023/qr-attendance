@@ -1,4 +1,4 @@
-import type { Member, MembershipType } from "@/types";
+import type { Member, MembershipType, ClassificationType } from "@/types";
 
 export interface PaginationInfo {
   page: number;
@@ -14,16 +14,15 @@ export interface MemberFilters {
   gender: "all" | "male" | "female";
   ageCategory: "all" | "Children" | "KKB" | "YAN" | "Men" | "Women";
   membershipType: "all" | MembershipType;
+  classification?: "all" | ClassificationType;
 }
 
 export type SortKey =
   | "member_id"
-  | "name"
+  | "first_name"
+  | "last_name"
   | "address"
-  | "birthday"
-  | "age_category"
-  | "created_at"
-  | "updated_at";
+  | "age_category";
 
 export interface SortConfig {
   key: SortKey;
@@ -44,6 +43,7 @@ export interface MemberFormData {
   gender: "male" | "female";
   member_id: string;
   membership_type: MembershipType;
+  classification?: ClassificationType;
 }
 
 export interface MembersManagementProps {

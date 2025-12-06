@@ -12,6 +12,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { signOut, supabase } from "@/lib";
+import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 
 interface UserProfile {
   email?: string;
@@ -23,6 +24,7 @@ export default function AdminAvatarDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,10 +71,15 @@ export default function AdminAvatarDropdown() {
   const handleSignOut = async () => {
     try {
       await signOut();
-      router.push("/admin/login");
+      router.push("/");
     } catch (error) {
       console.error("Sign out failed:", error);
     }
+  };
+
+  const handleLogoutClick = () => {
+    setIsOpen(false);
+    setShowLogoutDialog(true);
   };
 
   const getInitials = (name: string) => {
@@ -181,7 +188,7 @@ export default function AdminAvatarDropdown() {
             {/* Sign Out */}
             <div className="border-t border-gray-200 py-1">
               <button
-                onClick={handleSignOut}
+                onClick={handleLogoutClick}
                 className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
@@ -191,6 +198,11 @@ export default function AdminAvatarDropdown() {
           </div>
         </>
       )}
+      <LogoutConfirmDialog
+        open={showLogoutDialog}
+        onOpenChange={setShowLogoutDialog}
+        onConfirm={handleSignOut}
+      />
     </div>
   );
 }

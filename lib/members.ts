@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Member, MembershipType } from "@/types";
+import type { Member, MembershipType, ClassificationType } from "@/types";
 
 // Re-export for backward compatibility
 export type { Member };
@@ -17,6 +17,7 @@ export interface CreateMemberInput {
   birthday: string; // ISO date string (YYYY-MM-DD)
   gender: "male" | "female";
   membership_type: MembershipType;
+  classification?: ClassificationType;
   member_id?: string; // Optional, will auto-generate if not provided
 }
 
@@ -48,6 +49,32 @@ export async function createMember(input: CreateMemberInput): Promise<Member> {
     memberId = await getNextMemberId();
   }
 
+  // Normalize membership_type to ensure it matches DB constraint
+  const normalizedMembershipType = (input.membership_type?.trim() ||
+    "Attendee") as MembershipType;
+  if (
+    !["WSAM-LGAM", "LGAM", "WSAM", "Attendee"].includes(
+      normalizedMembershipType
+    )
+  ) {
+    throw new Error(
+      `Invalid membership_type: ${input.membership_type}. Must be one of: WSAM-LGAM, LGAM, WSAM, Attendee`
+    );
+  }
+
+  // Normalize classification if provided
+  const normalizedClassification = input.classification
+    ?.trim()
+    .toUpperCase() as ClassificationType | undefined;
+  if (
+    normalizedClassification &&
+    !["MEMBER", "WORKER", "PASTOR"].includes(normalizedClassification)
+  ) {
+    throw new Error(
+      `Invalid classification: ${input.classification}. Must be one of: MEMBER, WORKER, PASTOR`
+    );
+  }
+
   const { data, error } = await supabase
     .from("members")
     .insert({
@@ -63,7 +90,8 @@ export async function createMember(input: CreateMemberInput): Promise<Member> {
       barangay_name: input.barangay_name,
       birthday: input.birthday,
       gender: input.gender,
-      membership_type: input.membership_type,
+      membership_type: normalizedMembershipType,
+      classification: normalizedClassification,
       // age_category will be auto-calculated by trigger
     })
     .select()
@@ -121,10 +149,33 @@ export async function updateMember(
   id: string,
   input: Partial<CreateMemberInput>
 ): Promise<Member> {
+  // Normalize membership_type if provided
+  const updateData: any = { ...input };
+  if (updateData.membership_type) {
+    const normalized = updateData.membership_type.trim();
+    if (!["WSAM-LGAM", "LGAM", "WSAM", "Attendee"].includes(normalized)) {
+      throw new Error(
+        `Invalid membership_type: ${updateData.membership_type}. Must be one of: WSAM-LGAM, LGAM, WSAM, Attendee`
+      );
+    }
+    updateData.membership_type = normalized;
+  }
+
+  // Normalize classification if provided
+  if (updateData.classification) {
+    const normalized = updateData.classification.trim().toUpperCase();
+    if (!["MEMBER", "WORKER", "PASTOR"].includes(normalized)) {
+      throw new Error(
+        `Invalid classification: ${updateData.classification}. Must be one of: MEMBER, WORKER, PASTOR`
+      );
+    }
+    updateData.classification = normalized;
+  }
+
   const { data, error } = await supabase
     .from("members")
     .update({
-      ...input,
+      ...updateData,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)

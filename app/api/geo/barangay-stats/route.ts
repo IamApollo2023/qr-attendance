@@ -10,9 +10,18 @@ export async function GET() {
     .select("barangay_code, barangay_name")
     .not("barangay_code", "is", null);
 
+  console.log("[barangay-stats] Query result:", {
+    data,
+    error,
+    count: data?.length,
+  });
+
   if (error) {
     console.error("Failed to fetch barangay stats:", error);
-    return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch stats" },
+      { status: 500 }
+    );
   }
 
   const counts = new Map<
@@ -32,11 +41,13 @@ export async function GET() {
     }
   });
 
-  const result = Array.from(counts.values()).sort(
-    (a, b) => b.count - a.count
-  );
+  const result = Array.from(counts.values()).sort((a, b) => b.count - a.count);
 
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
+  });
 }
-
-

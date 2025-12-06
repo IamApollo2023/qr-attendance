@@ -15,20 +15,22 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <SidebarProvider>
-      <AppSidebar variant="inset" />
-      <SidebarInset className="flex flex-col">
-        <SiteHeader />
-        <main
-          className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden"
-          style={{ overscrollBehaviorX: "none" }}
-        >
-          <div className="mx-auto w-full max-w-6xl  pr-4  lg:pr-6 py-4 md:py-6">
-            <div className="@container/main flex flex-1 flex-col gap-4 md:gap-6">
-              {children}
+      <div className="flex h-screen w-full overflow-hidden">
+        <AppSidebar variant="inset" />
+        <SidebarInset className="flex flex-1 flex-col min-h-0">
+          <SiteHeader />
+          <main
+            className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden"
+            style={{ overscrollBehaviorX: "none" }}
+          >
+            <div className="mx-auto w-full max-w-6xl pr-4 lg:pr-6 py-4 md:py-6">
+              <div className="@container/main flex flex-1 flex-col gap-4 md:gap-6">
+                {children}
+              </div>
             </div>
-          </div>
-        </main>
-      </SidebarInset>
+          </main>
+        </SidebarInset>
+      </div>
     </SidebarProvider>
   );
 }

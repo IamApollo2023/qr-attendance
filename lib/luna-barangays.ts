@@ -45,6 +45,3 @@ export const LUNA_BARANGAY_COORDS: Record<
 export const LUNA_BARANGAY_OPTIONS: string[] = Object.keys(
   LUNA_BARANGAY_COORDS
 ) as LunaBarangay[];
-
-
-

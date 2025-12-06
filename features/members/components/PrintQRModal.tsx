@@ -1,43 +1,57 @@
 "use client";
 
-import { useRef, useEffect } from "react";
-import { useReactToPrint } from "react-to-print";
+import { useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import type { Member } from "@/types";
 
 interface PrintQRModalProps {
-  members: Member[];
-  selectedIds: string[];
-  onPrintHandlerReady?: (handler: () => void) => void;
+  membersToPrint: Member[];
 }
 
-export function PrintQRModal({
-  members,
-  selectedIds,
-  onPrintHandlerReady,
-}: PrintQRModalProps) {
-  const printRef = useRef<HTMLDivElement | null>(null);
-  const handleBatchPrint = useReactToPrint({
-    contentRef: printRef,
-  } as any);
-
+export function PrintQRModal({ membersToPrint }: PrintQRModalProps) {
   useEffect(() => {
-    if (onPrintHandlerReady) {
-      onPrintHandlerReady(handleBatchPrint);
-    }
-  }, [handleBatchPrint, onPrintHandlerReady]);
+    const styleId = "print-qr-styles";
+    if (document.getElementById(styleId)) return;
 
-  const selectedMembers = members.filter((m) =>
-    selectedIds.includes(m.member_id)
-  );
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+        #print-qr-content,
+        #print-qr-content * {
+          visibility: visible;
+        }
+        #print-qr-content {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          background: white;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      const existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        document.head.removeChild(existingStyle);
+      }
+    };
+  }, []);
+
+  if (membersToPrint.length === 0) return null;
 
   return (
-    <div ref={printRef} className="p-8 hidden print:block">
+    <div id="print-qr-content" className="hidden print:block p-8">
       <h1 className="text-2xl font-bold text-gray-900 text-center mb-4">
         Member QR Codes
       </h1>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 place-items-center">
-        {selectedMembers.map((member) => (
+        {membersToPrint.map((member) => (
           <div
             key={member.id}
             className="flex flex-col items-center justify-center border border-gray-200 rounded-2xl"
@@ -67,4 +81,3 @@ export function PrintQRModal({
     </div>
   );
 }
-

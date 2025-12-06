@@ -3,10 +3,11 @@ import type { Member } from "@/types";
 import type { CreateMemberInput } from "../members";
 import type { PaginationInfo } from "@/features/members/types/member.types";
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 20;
 
 export interface GetPaginatedMembersParams {
   page: number;
+  pageSize?: number;
 }
 
 export interface GetPaginatedMembersResult {
@@ -25,9 +26,9 @@ export const memberRepository = {
   async getPaginated(
     params: GetPaginatedMembersParams
   ): Promise<GetPaginatedMembersResult> {
-    const { page } = params;
-    const from = (page - 1) * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
+    const { page, pageSize = DEFAULT_PAGE_SIZE } = params;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
     const { data, error, count } = await supabase
       .from("members")
@@ -38,10 +39,11 @@ export const memberRepository = {
         first_name,
         middle_name,
         last_name,
-        address,
-        birthday,
+        barangay_name,
+        city_municipality_name,
         gender,
         membership_type,
+        classification,
         age_category,
         created_at,
         updated_at
@@ -55,10 +57,10 @@ export const memberRepository = {
       throw error;
     }
 
-    const totalPages = Math.ceil((count || 0) / PAGE_SIZE);
+    const totalPages = Math.ceil((count || 0) / pageSize);
     const pagination: PaginationInfo = {
       page,
-      pageSize: PAGE_SIZE,
+      pageSize,
       total: count || 0,
       totalPages,
       hasNextPage: page < totalPages,

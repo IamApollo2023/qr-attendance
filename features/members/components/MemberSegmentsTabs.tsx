@@ -24,17 +24,17 @@ export function MemberSegmentsTabs({
 }: MemberSegmentsTabsProps) {
   return (
     <div className="overflow-x-auto">
-      <div className="flex min-w-max bg-gray-100 rounded-t-xl px-2 pt-2 gap-1">
+      <div className="flex min-w-max gap-0.5 md:gap-1 -mb-px">
         {SEGMENTS.map((segment) => {
           const isActive = segment.key === activeSegment;
           return (
             <button
               key={segment.key}
               onClick={() => onSegmentChange(segment.key)}
-              className={`px-4 py-2 text-xs font-semibold rounded-t-lg border border-b-0 transition-colors shadow-sm ${
+              className={`px-2 py-1.5 md:px-4 md:py-2 text-[10px] md:text-xs font-semibold rounded-t-lg border border-b-0 transition-colors ${
                 isActive
-                  ? "bg-white text-blue-600 border-gray-300"
-                  : "bg-gray-100 text-gray-600 border-transparent hover:bg-white hover:text-blue-600"
+                  ? "bg-white text-blue-600 border-gray-300 border-b-white relative z-10"
+                  : "bg-transparent text-gray-600 border-transparent hover:text-blue-600 hover:bg-gray-50"
               }`}
             >
               {segment.label}
@@ -45,11 +45,3 @@ export function MemberSegmentsTabs({
     </div>
   );
 }
-
-
-
-
-
-
-
-

@@ -6,4 +6,8 @@ export { MemberRowActions } from "./MemberRowActions";
 export { PrintQRModal } from "./PrintQRModal";
 export { CSVImportModal } from "./CSVImportModal";
 export { MemberSegmentsTabs } from "./MemberSegmentsTabs";
+export { MemberSegmentSelector } from "./MemberSegmentSelector";
 export { MemberEditDrawer } from "./MemberEditDrawer";
+export { MemberAddDialog } from "./MemberAddDialog";
+export { MemberSearchDialog } from "./MemberSearchDialog";
+export { PrintDialog } from "./PrintDialog";

@@ -18,6 +18,7 @@ body {
     /* Chart colors derived from primary */
     --chart-1: 210 33% 51%;
     --chart-2: 210 40% 70%;
+    --chart-3: 210 50% 60%;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 210 33% 51%;
@@ -32,6 +33,7 @@ body {
     --primary-foreground: 0 0% 100%;
     --chart-1: 210 33% 65%;
     --chart-2: 210 40% 80%;
+    --chart-3: 210 50% 75%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 210 33% 60%;
@@ -46,24 +48,64 @@ body {
 @layer utilities {
   @keyframes scanner-line {
     0% {
-      transform: translateY(15%);
+      top: 0%;
       opacity: 0;
     }
-    20% {
+    10% {
       opacity: 1;
     }
     50% {
-      transform: translateY(80%);
+      top: 100%;
+      opacity: 1;
+    }
+    90% {
       opacity: 1;
     }
     100% {
-      transform: translateY(15%);
+      top: 0%;
       opacity: 0;
     }
   }
 
-  .animate-scan {
-    animation: scanner-line 2.4s ease-in-out infinite;
+  .scanner-line {
+    animation: scanner-line 1.8s linear infinite;
+  }
+
+  /* Hide any Leaflet pin markers completely; geo map uses polygon coloring only. */
+  .leaflet-marker-pane,
+  .leaflet-marker-pane img,
+  .leaflet-marker-icon,
+  .leaflet-marker-shadow,
+  .leaflet-container button[title="Marker"],
+  .leaflet-container button[aria-label="Marker"] {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  /* Hide Leaflet error notifications and issue badges */
+  .leaflet-container [class*="error"],
+  .leaflet-container [class*="issue"],
+  .leaflet-container [class*="notification"],
+  .leaflet-container [class*="badge"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+/* Print styles - hide everything except print content */
+@media print {
+  body > *:not([class*="print:"]) {
+    display: none !important;
+  }
+  [class*="print:block"] {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
   }
 }
 

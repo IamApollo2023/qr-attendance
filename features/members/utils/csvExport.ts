@@ -19,6 +19,7 @@ export function exportMembersToCSV(members: Member[]): void {
       "Birthday",
       "Gender",
       "Membership Type",
+      "Classification",
       "Age Category",
     ].join(","),
     ...members.map((m) =>
@@ -36,6 +37,7 @@ export function exportMembersToCSV(members: Member[]): void {
         m.birthday.split("T")[0],
         m.gender,
         m.membership_type,
+        m.classification ?? "",
         m.age_category,
       ].join(",")
     ),

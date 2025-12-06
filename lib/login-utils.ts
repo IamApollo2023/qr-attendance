@@ -14,7 +14,7 @@ export type { LoginResult };
 export async function handleLogin(
   email: string,
   password: string,
-  requiredRole: "admin" | "scanner"
+  requiredRole: "admin" | "scanner" | "finance"
 ): Promise<LoginResult> {
   try {
     // Sign in and get profile

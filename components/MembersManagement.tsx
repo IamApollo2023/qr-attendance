@@ -1,8 +1,14 @@
 "use client";
 
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from "react";
 import { useRouter } from "next/navigation";
-import { Download, Upload, Printer, UserPlus } from "lucide-react";
+import { Download, Upload, Printer, UserPlus, Search } from "lucide-react";
 
 import { deleteMember, type Member } from "@/lib";
 import { useToastContext } from "@/components/ToastProvider";
@@ -22,12 +28,13 @@ import {
   useCSVImport,
 } from "@/features/members/hooks";
 import {
-  MemberFilters,
   MemberTable,
   CSVImportModal,
-  PrintQRModal,
-  MemberSegmentsTabs,
+  MemberSegmentSelector,
   MemberEditDrawer,
+  MemberAddDialog,
+  MemberSearchDialog,
+  PrintDialog,
 } from "@/features/members/components";
 import type {
   MemberFilters as MemberFiltersType,
@@ -44,6 +51,9 @@ export default function MembersManagement({
   const { success, error: showError, showAlert } = useToastContext();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
 
   // Members data management
   const { members, pagination, loading, loadMembers } = useMembers({
@@ -66,6 +76,7 @@ export default function MembersManagement({
       const currentPage = pagination?.page || 1;
       loadMembers(currentPage);
       setIsFormOpen(false);
+      setIsAddDialogOpen(false);
     },
     onError: (error) => showError("Error", error, 3000),
     onMemberUpdated: () => {
@@ -82,15 +93,8 @@ export default function MembersManagement({
     membershipType: "all",
   });
 
-  // Debounced search input for better UX
-  const [searchInput, setSearchInput] = useState("");
-
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      setFilters((prev) => ({ ...prev, searchTerm: searchInput }));
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [searchInput]);
+  // Separate search state for dialog (doesn't affect table)
+  const [dialogSearchInput, setDialogSearchInput] = useState("");
 
   const { filteredMembers } = useMemberFilters({
     members,
@@ -151,10 +155,19 @@ export default function MembersManagement({
     (newPage: number) => {
       if (newPage < 1 || (pagination && newPage > pagination.totalPages))
         return;
-      router.push(`/admin/members?page=${newPage}`);
+      const currentPageSize = pagination?.pageSize || 20;
+      router.push(`/admin/members?page=${newPage}&pageSize=${currentPageSize}`);
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
     [router, pagination]
+  );
+
+  const handlePageSizeChange = useCallback(
+    (newPageSize: number) => {
+      router.push(`/admin/members?page=1&pageSize=${newPageSize}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [router]
   );
 
   const handleDelete = useCallback(
@@ -216,14 +229,6 @@ export default function MembersManagement({
     }
   }, [sortedMembers, selectedIds]);
 
-  // Print handler
-  const [printHandler, setPrintHandler] = useState<(() => void) | null>(null);
-
-  const handleBatchPrint = useCallback(() => {
-    printHandler?.();
-  }, [printHandler]);
-
-  const anySelected = selectedIds.length > 0;
   const allVisibleSelected =
     sortedMembers.length > 0 &&
     sortedMembers.every((m) => selectedIds.includes(m.member_id));
@@ -234,38 +239,46 @@ export default function MembersManagement({
 
   const handleSegmentChange = (segment: SegmentKey) => {
     setActiveSegment(segment);
-    setFilters((prev) => ({
-      ...prev,
-      ageCategory:
-        segment === "ALL"
-          ? "all"
-          : segment === "KIDS"
-            ? "Children"
-            : (segment as MemberFiltersType["ageCategory"]),
-    }));
-  };
-
-  // Quick stats derived from full members list
-  const { totalMembers, typeCounts } = useMemo(() => {
-    const total = members.length;
-    const counts: Record<string, number> = {
-      MEMBER: 0,
-      WORKER: 0,
-      PASTOR: 0,
-    };
-    members.forEach((m) => {
-      counts[m.membership_type] = (counts[m.membership_type] || 0) + 1;
+    setFilters((prev) => {
+      if (segment === "ALL") {
+        return {
+          ...prev,
+          ageCategory: "all",
+          gender: "all",
+        };
+      } else if (segment === "MEN") {
+        return {
+          ...prev,
+          ageCategory: "Men",
+          gender: "male",
+        };
+      } else if (segment === "WOMEN") {
+        return {
+          ...prev,
+          ageCategory: "Women",
+          gender: "female",
+        };
+      } else if (segment === "KIDS") {
+        return {
+          ...prev,
+          ageCategory: "Children",
+          gender: "all",
+        };
+      } else {
+        // YAN, KKB
+        return {
+          ...prev,
+          ageCategory: segment as MemberFiltersType["ageCategory"],
+          gender: "all",
+        };
+      }
     });
-    return {
-      totalMembers: total,
-      typeCounts: counts,
-    };
-  }, [members]);
+  };
 
   const openCreateMember = () => {
     // reset to create mode
     handleCancel();
-    setIsFormOpen(true);
+    setIsAddDialogOpen(true);
   };
 
   const handleEditWithDrawer = useCallback(
@@ -276,159 +289,224 @@ export default function MembersManagement({
     [handleEdit]
   );
 
-  const handleDrawerCancel = () => {
+  // Check if form has unsaved changes
+  const hasUnsavedChanges = useCallback(() => {
+    // For adding: check if any required fields are filled
+    if (!editingMember) {
+      return !!(
+        formData.first_name ||
+        formData.last_name ||
+        formData.birthday ||
+        formData.province_code ||
+        formData.city_municipality_code ||
+        formData.barangay_code
+      );
+    }
+
+    // For editing: check if form differs from original member
+    const original = editingMember;
+    return (
+      formData.first_name !== original.first_name ||
+      formData.middle_name !== (original.middle_name || "") ||
+      formData.last_name !== original.last_name ||
+      formData.birthday !== original.birthday.split("T")[0] ||
+      formData.gender !== original.gender ||
+      formData.membership_type !== original.membership_type ||
+      formData.classification !== (original.classification || undefined) ||
+      formData.province_code !== (original.province_code || "") ||
+      formData.city_municipality_code !==
+        (original.city_municipality_code || "") ||
+      formData.barangay_code !== (original.barangay_code || "")
+    );
+  }, [formData, editingMember]);
+
+  const handleDrawerCancel = useCallback(async () => {
+    if (hasUnsavedChanges()) {
+      const confirmed = await showAlert({
+        type: "warning",
+        title: "Discard changes?",
+        message: "You have unsaved changes. Are you sure you want to cancel?",
+        confirmText: "Yes, discard",
+        cancelText: "No, keep editing",
+      });
+
+      if (!confirmed) {
+        return; // User chose to keep editing
+      }
+    }
+
     handleCancel();
     setIsFormOpen(false);
-  };
+  }, [hasUnsavedChanges, showAlert, handleCancel]);
+
+  const handleAddDialogCancel = useCallback(async () => {
+    if (hasUnsavedChanges()) {
+      const confirmed = await showAlert({
+        type: "warning",
+        title: "Discard changes?",
+        message: "You have unsaved changes. Are you sure you want to cancel?",
+        confirmText: "Yes, discard",
+        cancelText: "No, keep editing",
+      });
+
+      if (!confirmed) {
+        return; // User chose to keep editing - don't close
+      }
+    }
+
+    handleCancel();
+    setIsAddDialogOpen(false);
+  }, [hasUnsavedChanges, showAlert, handleCancel]);
 
   return (
     <div className="flex flex-1 flex-col print:hidden">
-      <div className="@container/main flex flex-1 flex-col gap-4 py-4 md:gap-6 md:py-6">
-      {/* Header */}
+      <div className="@container/main flex flex-1 flex-col gap-3 py-3 md:gap-6 md:py-6">
+        {/* Header */}
         <div className="flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
-        <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
-            <p className="text-sm text-muted-foreground">
+          <div>
+            <h1 className="text-lg md:text-3xl font-semibold tracking-tight">
+              Members
+            </h1>
+            <p className="text-xs md:text-base text-muted-foreground">
               Manage registered members, filters, and QR codes.
-          </p>
-        </div>
+            </p>
+          </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={openCreateMember}>
-              <UserPlus className="h-4 w-4" />
-              <span>Add member</span>
+            <Button
+              size="sm"
+              onClick={openCreateMember}
+              className="text-xs md:text-sm"
+            >
+              <UserPlus className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Add member</span>
+              <span className="sm:hidden">Add</span>
             </Button>
             <Button
               size="sm"
               variant="outline"
-            onClick={handleExport}
-            disabled={members.length === 0}
-          >
-              <Download className="h-4 w-4" />
-            <span className="mobile:hidden">Export</span>
+              onClick={handleExport}
+              disabled={members.length === 0}
+              className="text-xs md:text-sm"
+            >
+              <Download className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
             <Button
               size="sm"
               variant="outline"
-            onClick={() => setShowImportModal(true)}
-          >
-              <Upload className="h-4 w-4" />
-            <span className="mobile:hidden">Import</span>
+              onClick={() => setShowImportModal(true)}
+              className="text-xs md:text-sm"
+            >
+              <Upload className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Import</span>
             </Button>
             <Button
               size="sm"
               variant="outline"
-            onClick={handleBatchPrint}
-            disabled={!anySelected}
-          >
-              <Printer className="h-4 w-4" />
-              <span className="mobile:hidden">Print selected</span>
+              onClick={() => setIsSearchDialogOpen(true)}
+              className="text-xs md:text-sm"
+            >
+              <Search className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Search</span>
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsPrintDialogOpen(true)}
+              className="text-xs md:text-sm"
+            >
+              <Printer className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Print</span>
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* CSV Import Modal */}
-      <CSVImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onFileUpload={handleCSVUpload}
-      />
+        {/* CSV Import Modal */}
+        <CSVImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onFileUpload={handleCSVUpload}
+        />
 
         {/* Content */}
-        <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 lg:px-6">
-        {/* Quick Stats */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Total members</CardDescription>
-                <CardTitle className="text-2xl font-semibold">
-                  {totalMembers}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Members</CardDescription>
-                <CardTitle className="text-xl font-semibold">
-                  {typeCounts.MEMBER || 0}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Workers</CardDescription>
-                <CardTitle className="text-xl font-semibold">
-              {typeCounts.WORKER || 0}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Pastors</CardDescription>
-                <CardTitle className="text-xl font-semibold">
-              {typeCounts.PASTOR || 0}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 md:gap-4 lg:px-6">
+          {/* Search Dialog */}
+          <MemberSearchDialog
+            isOpen={isSearchDialogOpen}
+            searchInput={dialogSearchInput}
+            onSearchInputChange={setDialogSearchInput}
+            onClose={() => {
+              setIsSearchDialogOpen(false);
+              setDialogSearchInput(""); // Clear search when closing
+            }}
+            allMembers={members}
+            onMemberClick={(member) => handleEditWithDrawer(member)}
+          />
 
-        {/* Search + Filters */}
-          <Card>
-            <CardContent className="space-y-4 pt-4">
-        <MemberFilters
-          filters={filters}
-          onFiltersChange={(newFilters) =>
-            setFilters((prev) => ({ ...prev, ...newFilters }))
-          }
-          searchInput={searchInput}
-          onSearchInputChange={setSearchInput}
-        />
-        <MemberSegmentsTabs
-          activeSegment={activeSegment}
-          onSegmentChange={handleSegmentChange}
-        />
-            </CardContent>
-          </Card>
-
-        {/* Members Table */}
-          <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {/* Members Table with Selector */}
+          <Card
+            className="flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-400"
+            style={{
+              scrollbarWidth: "thin",
+              scrollbarColor: "#cbd5e1 #f1f5f9",
+            }}
+          >
+            <div className="flex-shrink-0">
+              <MemberSegmentSelector
+                activeSegment={activeSegment}
+                onSegmentChange={handleSegmentChange}
+                membershipType={filters.membershipType}
+                onMembershipTypeChange={(type) =>
+                  setFilters((prev) => ({ ...prev, membershipType: type }))
+                }
+              />
+            </div>
             <CardContent className="flex min-h-0 flex-1 flex-col p-0">
-        <MemberTable
-          members={sortedMembers}
-          totalMembers={members.length}
-          loading={loading}
-          searchTerm={filters.searchTerm}
-          pagination={pagination}
-          sortConfig={sortConfig}
-          selectedIds={selectedIds}
-          openActionRowId={openActionRowId}
-          allVisibleSelected={allVisibleSelected}
-          onSort={handleSort}
-          onToggleSelect={toggleSelect}
-          onToggleSelectAll={toggleSelectAllVisible}
-          onPageChange={handlePageChange}
-          onSetOpenActionRowId={setOpenActionRowId}
-          onViewQR={(member) => {
-            window.open(`/attendee?id=${member.member_id}`, "_blank");
-          }}
-          onEdit={handleEditWithDrawer}
-          onDelete={handleDelete}
-        />
+              <MemberTable
+                members={sortedMembers}
+                totalMembers={members.length}
+                loading={loading}
+                searchTerm={filters.searchTerm}
+                pagination={pagination}
+                sortConfig={sortConfig}
+                selectedIds={selectedIds}
+                openActionRowId={openActionRowId}
+                allVisibleSelected={allVisibleSelected}
+                hideAgeGroup={activeSegment !== "ALL"}
+                onSort={handleSort}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAll={toggleSelectAllVisible}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                onSetOpenActionRowId={setOpenActionRowId}
+                onViewQR={(member) => {
+                  window.open(`/attendee?id=${member.member_id}`, "_blank");
+                }}
+                onEdit={handleEditWithDrawer}
+                onDelete={handleDelete}
+              />
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Print QR layout (only mount when something is selected to avoid unexpected print behavior) */}
-      {anySelected && (
-        <PrintQRModal
-          members={members}
-          selectedIds={selectedIds}
-          onPrintHandlerReady={setPrintHandler}
-        />
-      )}
+      {/* Print Dialog */}
+      <PrintDialog
+        isOpen={isPrintDialogOpen}
+        allMembers={members}
+        onClose={() => setIsPrintDialogOpen(false)}
+      />
+
+      <MemberAddDialog
+        isOpen={isAddDialogOpen}
+        formData={formData}
+        onFormDataChange={updateFormField}
+        onSubmit={handleSubmit}
+        onCancel={handleAddDialogCancel}
+      />
 
       <MemberEditDrawer
-        isOpen={isFormOpen}
+        isOpen={isFormOpen && !!editingMember}
         formData={formData}
         editingMember={editingMember}
         onFormDataChange={updateFormField}

@@ -71,3 +71,20 @@ INSERT INTO activities (name, description, status) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

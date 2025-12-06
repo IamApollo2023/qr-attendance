@@ -2,7 +2,17 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Plus, Edit, Trash2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  Download,
+  Plus,
+  Edit,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from "lucide-react";
 
 import { deleteActivity, type Activity } from "@/lib/activities";
 import { useToastContext } from "@/components/ToastProvider";
@@ -181,24 +191,32 @@ export default function ActivitiesManagement({
         {/* Header */}
         <div className="flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Activities</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-lg md:text-3xl font-semibold tracking-tight">
+              Activities
+            </h1>
+            <p className="text-xs md:text-base text-muted-foreground">
               Manage church activities and events.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={openCreateActivity}>
-              <Plus className="h-4 w-4" />
-              <span>Add activity</span>
+            <Button
+              size="sm"
+              onClick={openCreateActivity}
+              className="text-xs md:text-sm"
+            >
+              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Add activity</span>
+              <span className="sm:hidden">Add</span>
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={handleExport}
               disabled={activities.length === 0}
+              className="text-xs md:text-sm"
             >
-              <Download className="h-4 w-4" />
-              <span className="mobile:hidden">Export</span>
+              <Download className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
           </div>
         </div>
@@ -228,8 +246,10 @@ export default function ActivitiesManagement({
                 </div>
               ) : sortedActivities.length === 0 ? (
                 <div className="p-12 text-center flex-1 flex items-center justify-center flex-col">
-                  <p className="text-gray-700 text-lg">No activities found</p>
-                  <p className="text-gray-500 text-sm mt-2">
+                  <p className="text-gray-700 text-sm md:text-base">
+                    No activities found
+                  </p>
+                  <p className="text-gray-500 text-xs md:text-sm mt-2">
                     {filters.searchTerm
                       ? "Try a different search term"
                       : "Create your first activity to get started"}
@@ -351,10 +371,14 @@ export default function ActivitiesManagement({
                   {/* Pagination */}
                   {pagination && pagination.totalPages > 1 && (
                     <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 flex items-center justify-between mobile:flex-col mobile:gap-2">
-                      <div className="text-sm text-gray-700 mobile:text-center">
-                        Showing {((pagination.page - 1) * pagination.pageSize) + 1} to{" "}
-                        {Math.min(pagination.page * pagination.pageSize, pagination.total)} of{" "}
-                        {pagination.total} activities
+                      <div className="text-xs md:text-sm text-gray-700 mobile:text-center">
+                        Showing{" "}
+                        {(pagination.page - 1) * pagination.pageSize + 1} to{" "}
+                        {Math.min(
+                          pagination.page * pagination.pageSize,
+                          pagination.total
+                        )}{" "}
+                        of {pagination.total} activities
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -363,9 +387,9 @@ export default function ActivitiesManagement({
                           className="p-1.5 text-gray-600 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           aria-label="Previous page"
                         >
-                          <ChevronLeft className="w-4 h-4" />
+                          <ChevronLeft className="w-3 h-3 md:w-4 md:h-4" />
                         </button>
-                        <span className="text-sm text-gray-700">
+                        <span className="text-xs md:text-sm text-gray-700">
                           Page {pagination.page} of {pagination.totalPages}
                         </span>
                         <button
@@ -374,7 +398,7 @@ export default function ActivitiesManagement({
                           className="p-1.5 text-gray-600 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           aria-label="Next page"
                         >
-                          <ChevronRight className="w-4 h-4" />
+                          <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
                         </button>
                       </div>
                     </div>
@@ -409,5 +433,3 @@ export default function ActivitiesManagement({
     </div>
   );
 }
-
-

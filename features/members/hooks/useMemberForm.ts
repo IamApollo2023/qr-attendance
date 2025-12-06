@@ -56,6 +56,7 @@ export function useMemberForm({
             birthday: formData.birthday,
             gender: formData.gender,
             membership_type: formData.membership_type as MembershipType,
+            classification: formData.classification,
           });
 
           onSuccess?.("Member updated successfully");
@@ -77,6 +78,7 @@ export function useMemberForm({
             birthday: formData.birthday,
             gender: formData.gender,
             membership_type: formData.membership_type as MembershipType,
+            classification: formData.classification,
             member_id: formData.member_id || undefined, // Auto-generate if empty
           });
 
@@ -110,6 +112,7 @@ export function useMemberForm({
       birthday: member.birthday.split("T")[0], // Convert to YYYY-MM-DD format
       gender: member.gender,
       membership_type: member.membership_type,
+      classification: member.classification,
       member_id: member.member_id,
     });
   }, []);
@@ -132,7 +135,8 @@ export function useMemberForm({
       barangay_name: "",
       birthday: "",
       gender: "male",
-      membership_type: "MEMBER",
+      membership_type: "Attendee",
+      classification: undefined,
       member_id: "",
     });
     setEditingMember(null);

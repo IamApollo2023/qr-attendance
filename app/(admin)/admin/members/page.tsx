@@ -14,14 +14,15 @@ const MembersManagement = dynamic(
 export default async function MembersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; pageSize?: string }>;
 }) {
   const params = await searchParams;
   const page = parseInt(params.page || "1", 10);
+  const pageSize = parseInt(params.pageSize || "20", 10);
 
   // Auth is already checked by middleware, so we can trust the user is authenticated
   // Fetch initial data server-side with pagination
-  const { members, error, pagination } = await getMembersData(page);
+  const { members, error, pagination } = await getMembersData(page, pageSize);
 
   if (error) {
     return (
@@ -43,5 +44,3 @@ export default async function MembersPage({
     />
   );
 }
-
-

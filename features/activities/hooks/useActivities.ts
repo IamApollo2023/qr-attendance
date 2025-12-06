@@ -60,7 +60,6 @@ export function useActivities({
     if (pageFromUrl !== (pagination?.page || 1)) {
       loadActivities(pageFromUrl);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Set up real-time subscription
@@ -94,4 +93,3 @@ export function useActivities({
     loadActivities,
   };
 }
-

@@ -26,12 +26,14 @@ export function useCSVImport({
         const lines = text.split("\n").filter((line) => line.trim());
 
         if (lines.length < 2) {
-          throw new Error("CSV must have at least a header row and one data row");
+          throw new Error(
+            "CSV must have at least a header row and one data row"
+          );
         }
 
         const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
 
-        // Expected headers: first_name, last_name, province_code, city_municipality_code, barangay_code, birthday, gender, membership_type
+        // Expected headers: first_name, last_name, province_code, city_municipality_code, barangay_code, birthday, gender, membership_type, classification (optional)
         const requiredHeaders = [
           "first_name",
           "last_name",
@@ -81,17 +83,22 @@ export function useCSVImport({
             continue; // Skip invalid gender
           }
 
-          // Normalize membership_type: map old values to new simplified values
-          let membership_type = row.membership_type.trim().toUpperCase();
+          // Normalize membership_type
+          let membership_type = row.membership_type.trim();
+          // Validate membership_type (new values)
           if (
-            membership_type === "MEMBER (SELDOMLY ATTENDS)" ||
-            membership_type === "MEMBER (REGULARLY ATTENDS)"
+            !["WSAM-LGAM", "LGAM", "WSAM", "Attendee"].includes(membership_type)
           ) {
-            membership_type = "MEMBER";
-          }
-          // Validate membership_type
-          if (!["MEMBER", "WORKER", "PASTOR"].includes(membership_type)) {
             continue; // Skip invalid membership type
+          }
+
+          // Handle classification (optional)
+          let classification = row.classification?.trim().toUpperCase();
+          if (
+            classification &&
+            !["MEMBER", "WORKER", "PASTOR"].includes(classification)
+          ) {
+            classification = undefined; // Invalid classification, set to undefined
           }
 
           // Format birthday (expecting YYYY-MM-DD)
@@ -115,7 +122,16 @@ export function useCSVImport({
             barangay_code: row.barangay_code,
             birthday: birthday,
             gender: gender as "male" | "female",
-            membership_type: membership_type as "MEMBER" | "WORKER" | "PASTOR",
+            membership_type: membership_type as
+              | "WSAM-LGAM"
+              | "LGAM"
+              | "WSAM"
+              | "Attendee",
+            classification: classification as
+              | "MEMBER"
+              | "WORKER"
+              | "PASTOR"
+              | undefined,
             member_id: row.member_id || undefined,
           });
         }
@@ -133,8 +149,7 @@ export function useCSVImport({
         }
       } catch (error: any) {
         console.error("Failed to import CSV:", error);
-        const errorMessage =
-          error?.message || "Failed to import CSV file";
+        const errorMessage = error?.message || "Failed to import CSV file";
         onError?.(errorMessage);
       }
     },
@@ -145,7 +160,3 @@ export function useCSVImport({
     handleFileUpload,
   };
 }
-
-
-
-

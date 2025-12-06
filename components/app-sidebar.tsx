@@ -3,7 +3,6 @@
 import * as React from "react";
 import Image from "next/image";
 import {
-  CameraIcon,
   ClipboardListIcon,
   MapIcon,
   HelpCircleIcon,
@@ -14,7 +13,6 @@ import {
   CalendarIcon,
 } from "lucide-react";
 
-import { NavDocuments } from "@/components/nav-documents";
 import { NavMain } from "@/components/nav-main";
 import { NavSecondary } from "@/components/nav-secondary";
 import { NavUser } from "@/components/nav-user";
@@ -48,36 +46,39 @@ const data = {
     },
     {
       title: "Activities",
-      url: "/admin/activities",
+      url: null, // Group title, not clickable
       icon: CalendarIcon,
+      items: [
+        {
+          title: "Life Group",
+          url: "/admin/activities/life-group",
+        },
+        {
+          title: "iCare",
+          url: "/admin/activities/icare",
+        },
+        {
+          title: "Water Baptism",
+          url: "/admin/activities/water-baptism",
+        },
+        {
+          title: "House Blessings",
+          url: "/admin/activities/house-blessings",
+        },
+        {
+          title: "Necro Services",
+          url: "/admin/activities/necros-services",
+        },
+        {
+          title: "Non JIL related activities",
+          url: "/admin/activities/non-jil-related",
+        },
+      ],
     },
     {
       title: "Geo Map",
       url: "/admin/geo",
       icon: MapIcon,
-    },
-    {
-      title: "Scanner",
-      url: "/scanner",
-      icon: CameraIcon,
-    },
-  ],
-  // Quick links section – keep it simple and relevant to this app.
-  documents: [
-    {
-      name: "Members List",
-      url: "/admin/members",
-      icon: UsersIcon,
-    },
-    {
-      name: "Attendance Records",
-      url: "/admin/attendance",
-      icon: ClipboardListIcon,
-    },
-    {
-      name: "QR Scanner",
-      url: "/scanner",
-      icon: CameraIcon,
     },
   ],
   navSecondary: [
@@ -120,7 +121,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       className="object-cover"
                     />
                   </span>
-                  <span className="text-base font-semibold">
+                  <span className="text-base sm:text-base font-semibold">
                     JIL Luna Admin
                   </span>
                 </span>
@@ -131,7 +132,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

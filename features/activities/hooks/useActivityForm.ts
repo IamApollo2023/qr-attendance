@@ -1,5 +1,9 @@
 import { useState, useCallback } from "react";
-import { createActivity, updateActivity, type Activity } from "@/lib/activities";
+import {
+  createActivity,
+  updateActivity,
+  type Activity,
+} from "@/lib/activities";
 import type { ActivityFormData } from "../types/activity.types";
 import type { ActivityStatus } from "@/types";
 
@@ -101,7 +105,10 @@ export function useActivityForm({
   }, []);
 
   const updateFormField = useCallback(
-    <K extends keyof ActivityFormData>(field: K, value: ActivityFormData[K]) => {
+    <K extends keyof ActivityFormData>(
+      field: K,
+      value: ActivityFormData[K]
+    ) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
     []
@@ -117,5 +124,3 @@ export function useActivityForm({
     setFormData,
   };
 }
-
-

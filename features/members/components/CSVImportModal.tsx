@@ -49,7 +49,9 @@ export function CSVImportModal({
             />
           </div>
           <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-            <p className="text-sm font-medium text-blue-900 mb-2">CSV Format:</p>
+            <p className="text-sm font-medium text-blue-900 mb-2">
+              CSV Format:
+            </p>
             <p className="text-xs text-blue-700">
               Required columns: first_name, last_name, address, birthday
               (YYYY-MM-DD), gender (male/female)
@@ -73,12 +75,3 @@ export function CSVImportModal({
     </div>
   );
 }
-
-
-
-
-
-
-
-
-

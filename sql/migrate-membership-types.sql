@@ -21,3 +21,20 @@ ADD CONSTRAINT members_membership_type_check CHECK (
 );
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

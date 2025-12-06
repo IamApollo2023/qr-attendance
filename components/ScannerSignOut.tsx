@@ -9,7 +9,7 @@ export default function ScannerSignOut() {
   const handleSignOut = async () => {
     try {
       await signOut();
-      router.push("/scanner/login");
+      router.push("/");
     } catch (error) {
       console.error("Sign out failed:", error);
     }

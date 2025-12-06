@@ -42,8 +42,3 @@ export async function fetchBarangaysByCity(
   const data = await res.json();
   return data as PSGCBarangay[];
 }
-
-
-
-
-

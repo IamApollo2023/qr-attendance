@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('scanner', 'admin')),
+  role TEXT NOT NULL CHECK (role IN ('scanner', 'admin', 'finance')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

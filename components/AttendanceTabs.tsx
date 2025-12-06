@@ -3,21 +3,15 @@
 import { useMemo, useState } from "react";
 
 import type { AttendanceRecord } from "@/types";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type TabKey =
   | "MEN"
@@ -128,135 +122,146 @@ export function AttendanceTabs({ records, eventId }: AttendanceTabsProps) {
     setPageByTab((prev) => ({ ...prev, [activeTab]: newPage }));
   };
 
+  const selectedLabel = TABS.find((t) => t.key === activeTab)?.label || "MEN";
+
   return (
-    <div className="flex flex-1 flex-col gap-4 min-h-0">
-      {/* Tabs */}
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max gap-1 rounded-t-xl bg-muted px-2 pt-2">
-          {TABS.map((tab) => {
-            const isActive = tab.key === activeTab;
-            return (
-              <Button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                size="sm"
-                variant={isActive ? "default" : "ghost"}
-                className={`rounded-b-none border-b-0 text-xs shadow-sm ${
-                  isActive ? "" : "text-muted-foreground"
-                }`}
-              >
-                {tab.label}
-              </Button>
-            );
-          })}
+    <Card
+      className="flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-400"
+      style={{
+        scrollbarWidth: "thin",
+        scrollbarColor: "#cbd5e1 #f1f5f9",
+      }}
+    >
+      <div className="flex-shrink-0">
+        <div className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-3 border-b border-gray-200">
+          <label className="text-[10px] md:text-xs font-medium text-gray-700 whitespace-nowrap">
+            Filter by:
+          </label>
+          <Select
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as TabKey)}
+          >
+            <SelectTrigger className="w-[140px] md:w-[160px] h-7 md:h-8 text-[10px] md:text-xs">
+              <SelectValue>{selectedLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {TABS.map((tab) => (
+                <SelectItem key={tab.key} value={tab.key} className="text-xs">
+                  {tab.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
-
-      {/* Table */}
-      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">
-            {TABS.find((t) => t.key === activeTab)?.label} attendance
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[130px] text-xs">
-                    Member ID
-                  </TableHead>
-                  <TableHead className="text-xs">Name</TableHead>
-                  <TableHead className="text-xs">Age group</TableHead>
-                  <TableHead className="text-xs">Scanned at</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pagedRecords.length === 0
-                  ? Array.from({ length: 5 }).map((_, idx) => (
-                      <TableRow key={idx} className="animate-pulse">
-                        <TableCell>
-                          <div className="h-3 w-24 rounded bg-muted" />
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-3 w-40 rounded bg-muted" />
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-3 w-24 rounded bg-muted" />
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-3 w-32 rounded bg-muted" />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  : pagedRecords.map((rec) => (
-                      <TableRow key={rec.id}>
-                        <TableCell className="font-mono text-xs">
-                          {rec.attendee_id}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {rec.member
-                            ? `${rec.member.first_name} ${rec.member.last_name}`
-                            : rec.attendee_id}
-                        </TableCell>
-                        <TableCell className="text-xs">
+      <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+        <div
+          className="overflow-x-auto overflow-y-hidden flex-1 min-h-0 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-400"
+          style={{ scrollbarWidth: "thin", scrollbarColor: "#cbd5e1 #f1f5f9" }}
+        >
+          <table style={{ tableLayout: "auto", minWidth: "100%" }}>
+            <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+              <tr>
+                <th className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs">
+                  Member ID
+                </th>
+                <th className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs">
+                  Name
+                </th>
+                <th className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs mobile:hidden">
+                  Age group
+                </th>
+                <th className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs">
+                  Scanned at
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {pagedRecords.length === 0
+                ? Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse">
+                      <td className="px-4 py-3">
+                        <div className="h-3 w-24 rounded bg-muted" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-3 w-40 rounded bg-muted" />
+                      </td>
+                      <td className="px-4 py-3 mobile:hidden">
+                        <div className="h-3 w-24 rounded bg-muted" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-3 w-32 rounded bg-muted" />
+                      </td>
+                    </tr>
+                  ))
+                : pagedRecords.map((rec) => (
+                    <tr
+                      key={rec.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-4 py-3 text-gray-900 font-mono font-semibold text-[10px] md:text-xs whitespace-nowrap">
+                        {rec.attendee_id}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700 text-xs md:text-sm whitespace-nowrap">
+                        {rec.member
+                          ? `${rec.member.first_name} ${rec.member.last_name}`
+                          : rec.attendee_id}
+                      </td>
+                      <td className="px-3 py-2 md:px-4 md:py-3 mobile:hidden whitespace-nowrap">
+                        <span className="px-1.5 md:px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] md:text-xs font-medium">
                           {rec.member?.age_category || "N/A"}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {new Date(rec.scanned_at).toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-              </TableBody>
-            </Table>
-          </div>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-[10px] md:text-xs whitespace-nowrap">
+                        {new Date(rec.scanned_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+            </tbody>
+          </table>
+        </div>
 
-          <div className="flex items-center justify-between border-t bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-            {currentTabRecords.length === 0 ? (
-              <span className="w-full text-center">
-                No records yet for this group
-              </span>
-            ) : (
-              <>
-                <span>
+        <div className="px-3 py-2 md:px-4 md:py-3 bg-gray-50 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="text-gray-600 text-[10px] md:text-xs">
+              {currentTabRecords.length === 0 ? (
+                "No records yet for this group"
+              ) : (
+                <>
                   Showing {(currentPage - 1) * PAGE_SIZE + 1}-
-                  {Math.min(
-                    currentPage * PAGE_SIZE,
-                    currentTabRecords.length
-                  )}{" "}
-                  of {currentTabRecords.length} records
+                  {Math.min(currentPage * PAGE_SIZE, currentTabRecords.length)}{" "}
+                  of {currentTabRecords.length} record
+                  {currentTabRecords.length !== 1 ? "s" : ""}
+                </>
+              )}
+            </p>
+
+            {currentTabRecords.length > 0 && totalPages > 1 && (
+              <div className="flex items-center gap-0.5 md:gap-1 flex-wrap justify-center">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="p-1 md:p-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-3 h-3 md:w-4 md:h-4 text-gray-700" />
+                </button>
+                <span className="px-1 md:px-2 text-gray-400 text-[10px] md:text-sm">
+                  Page {currentPage} of {totalPages}
                 </span>
-                {totalPages > 1 && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-2 text-[11px]"
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage <= 1}
-                    >
-                      Prev
-                    </Button>
-                    <span>
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-2 text-[11px]"
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage >= totalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                )}
-              </>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  className="p-1 md:p-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-3 h-3 md:w-4 md:h-4 text-gray-700" />
+                </button>
+              </div>
             )}
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

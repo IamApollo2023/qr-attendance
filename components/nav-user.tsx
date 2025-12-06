@@ -2,20 +2,13 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import {
-  BellIcon,
-  CreditCardIcon,
-  LogOutIcon,
-  MoreVerticalIcon,
-  UserCircleIcon,
-} from "lucide-react";
+import { LogOutIcon, MoreVerticalIcon, UserCircleIcon } from "lucide-react";
 
 import { supabase, signOut } from "@/lib";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -27,6 +20,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 
 type UserProfile = {
   fullName: string | null;
@@ -38,6 +32,7 @@ export function NavUser() {
   const { isMobile } = useSidebar();
   const router = useRouter();
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
+  const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
 
   React.useEffect(() => {
     const fetchUser = async () => {
@@ -80,10 +75,14 @@ export function NavUser() {
   const handleSignOut = async () => {
     try {
       await signOut();
-      router.push("/admin/login");
+      router.push("/");
     } catch (error) {
       console.error("Sign out from sidebar failed:", error);
     }
+  };
+
+  const handleLogoutClick = () => {
+    setShowLogoutDialog(true);
   };
 
   return (
@@ -145,28 +144,18 @@ export function NavUser() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <UserCircleIcon />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCardIcon />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BellIcon />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>
+            <DropdownMenuItem onClick={handleLogoutClick}>
               <LogOutIcon />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+      <LogoutConfirmDialog
+        open={showLogoutDialog}
+        onOpenChange={setShowLogoutDialog}
+        onConfirm={handleSignOut}
+      />
     </SidebarMenu>
   );
 }

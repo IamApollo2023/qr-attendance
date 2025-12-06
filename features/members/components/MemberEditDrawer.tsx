@@ -27,10 +27,17 @@ export function MemberEditDrawer({
 }: MemberEditDrawerProps) {
   if (!isOpen) return null;
 
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    // Only close if clicking the backdrop itself, not the drawer content
+    if (e.target === e.currentTarget) {
+      onCancel();
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-sm"
-      onClick={onCancel}
+      onClick={handleBackdropClick}
     >
       <div
         className="w-full max-w-md h-full bg-gray-50 shadow-xl border-l border-gray-200 flex flex-col p-4"
@@ -47,9 +54,3 @@ export function MemberEditDrawer({
     </div>
   );
 }
-
-
-
-
-
-

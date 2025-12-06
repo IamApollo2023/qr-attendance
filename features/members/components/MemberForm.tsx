@@ -146,6 +146,24 @@ export function MemberForm({
               }
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
+              <option value="WSAM-LGAM">WSAM-LGAM</option>
+              <option value="LGAM">LGAM</option>
+              <option value="WSAM">WSAM</option>
+              <option value="Attendee">Attendee</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Classification
+            </label>
+            <select
+              value={formData.classification || ""}
+              onChange={(e) =>
+                onFormDataChange("classification", e.target.value || undefined)
+              }
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            >
+              <option value="">None</option>
               <option value="MEMBER">MEMBER</option>
               <option value="WORKER">WORKER</option>
               <option value="PASTOR">PASTOR</option>

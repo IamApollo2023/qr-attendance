@@ -39,5 +39,3 @@ export function exportActivitiesToCSV(activities: Activity[]): void {
   a.click();
   URL.revokeObjectURL(url);
 }
-
-

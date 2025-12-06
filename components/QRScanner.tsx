@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Camera, CameraOff, CheckCircle2, AlertCircle } from "lucide-react";
+import { Camera, CameraOff, CheckCircle2, List, X } from "lucide-react";
 import { BrowserMultiFormatReader, NotFoundException } from "@zxing/library";
 import { supabase, signOut, type AttendanceRecord } from "@/lib";
 import { useToastContext } from "@/components/ToastProvider";
@@ -39,6 +39,45 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
   const processedCodesRef = useRef<Set<string>>(new Set());
   const { success, error: showError, warning, info } = useToastContext();
   const [lastSync, setLastSync] = useState(() => new Date());
+  const [isListOpen, setIsListOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Fetch scanned attendees from database
+  const fetchScannedAttendees = useCallback(async () => {
+    try {
+      const { data: records, error } = await supabase
+        .from("qr_attendance")
+        .select(
+          `
+          attendee_id,
+          scanned_at,
+          member:members (
+            first_name,
+            last_name
+          )
+        `
+        )
+        .eq("event_id", eventId || "default")
+        .order("scanned_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const attendees: ScannedAttendee[] = (records || []).map(
+        (record: any) => ({
+          attendee_id: record.attendee_id,
+          scanned_at: record.scanned_at,
+          name:
+            record.member && record.member.first_name && record.member.last_name
+              ? `${record.member.first_name} ${record.member.last_name}`
+              : record.attendee_id,
+        })
+      );
+      setScannedAttendees(attendees);
+    } catch (err) {
+      console.error("Failed to load existing records:", err);
+    }
+  }, [eventId]);
 
   // Auth is already verified by middleware - set authChecked immediately
   // This prevents redundant auth fetches
@@ -46,10 +85,36 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
     setAuthChecked(true);
   }, []);
 
+  // Detect mobile viewport with debounced resize listener
   useEffect(() => {
-    const interval = setInterval(() => setLastSync(new Date()), 30000);
-    return () => clearInterval(interval);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkMobile();
+    let timeoutId: NodeJS.Timeout;
+    const handleResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(checkMobile, 150);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      clearTimeout(timeoutId);
+    };
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLastSync(new Date());
+      // Refresh scanned attendees list every 30 seconds to stay in sync with database
+      if (authChecked) {
+        fetchScannedAttendees();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [authChecked, fetchScannedAttendees]);
 
   // Initialize QR code reader
   useEffect(() => {
@@ -139,34 +204,11 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
     }
   };
 
-  // Load existing attendance records on mount
+  // Load existing attendance records on mount and when eventId changes
   useEffect(() => {
     if (!authChecked) return;
-
-    const loadExistingRecords = async () => {
-      try {
-        const { data: records, error } = await supabase
-          .from("qr_attendance")
-          .select("*")
-          .eq("event_id", eventId || "default")
-          .order("scanned_at", { ascending: false })
-          .limit(50);
-
-        if (error) throw error;
-
-        const attendees: ScannedAttendee[] = (records || []).map((record) => ({
-          attendee_id: record.attendee_id,
-          scanned_at: record.scanned_at,
-          name: record.attendee_id,
-        }));
-        setScannedAttendees(attendees);
-      } catch (err) {
-        console.error("Failed to load existing records:", err);
-      }
-    };
-
-    loadExistingRecords();
-  }, [eventId, authChecked]);
+    fetchScannedAttendees();
+  }, [eventId, authChecked, fetchScannedAttendees]);
 
   // Handle successful scan
   const handleScanSuccess = useCallback(
@@ -260,14 +302,8 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
           throw insertError;
         }
 
-        // Add to local list with member name
-        const newAttendee: ScannedAttendee = {
-          attendee_id: attendeeId,
-          scanned_at: insertedRecord.scanned_at,
-          name: `${member.first_name} ${member.last_name}`,
-        };
-
-        setScannedAttendees((prev) => [newAttendee, ...prev]);
+        // Refetch from database to ensure consistency
+        await fetchScannedAttendees();
 
         // Play success sound
         playSuccessSound();
@@ -301,7 +337,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         setIsProcessing(false);
       }
     },
-    [eventId, onScanSuccess]
+    [eventId, onScanSuccess, fetchScannedAttendees]
   );
 
   // Request camera permission
@@ -465,10 +501,58 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
     );
   }
 
+  // Attendees list content component (reusable)
+  const AttendeesListContent = () => (
+    <>
+      <div className="px-3 md:px-4 py-1.5 md:py-2 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+        <h2 className="text-xs md:text-sm font-semibold text-gray-700">
+          Scanned Attendees ({scannedAttendees.length})
+        </h2>
+        {/* Close button for mobile drawer */}
+        <button
+          onClick={() => setIsListOpen(false)}
+          className="md:hidden p-1 rounded-full hover:bg-gray-100 transition-colors"
+          aria-label="Close list"
+        >
+          <X className="w-4 h-4 text-gray-600" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {scannedAttendees.length === 0 ? (
+          <div className="px-3 md:px-4 py-6 md:py-8 text-center text-gray-500 text-xs md:text-sm">
+            No attendees scanned yet. Point camera at QR code to begin.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {scannedAttendees.map((attendee, index) => (
+              <div
+                key={`${attendee.attendee_id}-${attendee.scanned_at}-${index}`}
+                className="px-3 md:px-4 py-2 md:py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm md:text-base text-gray-900 truncate">
+                    {attendee.name || attendee.attendee_id}
+                  </div>
+                  <div className="text-[10px] md:text-xs text-gray-600">
+                    {attendee.attendee_id} •{" "}
+                    {new Date(attendee.scanned_at).toLocaleString()}
+                  </div>
+                </div>
+                <div className="ml-3 md:ml-4">
+                  <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col md:flex-row h-screen bg-gray-50 overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#1c2d44] via-[#274464] to-[#5b84ad] px-3 md:px-6 py-3 md:py-4 shadow-lg text-white">
+      <div className="bg-gradient-to-r from-[#1c2d44] via-[#274464] to-[#5b84ad] px-3 md:px-6 py-3 md:py-4 shadow-lg text-white flex-shrink-0 z-10">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Image
@@ -488,43 +572,21 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
             </div>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
+            {/* Toggle list button with count badge */}
             <button
-              onClick={() => {
-                const alerts = [
-                  () =>
-                    success(
-                      "Test Success",
-                      "This is a success message for testing",
-                      3000
-                    ),
-                  () =>
-                    showError(
-                      "Test Error",
-                      "This is an error message for testing",
-                      3000
-                    ),
-                  () =>
-                    warning(
-                      "Test Warning",
-                      "This is a warning message for testing",
-                      3000
-                    ),
-                  () =>
-                    info(
-                      "Test Info",
-                      "This is an info message for testing",
-                      3000
-                    ),
-                ];
-                const randomAlert =
-                  alerts[Math.floor(Math.random() * alerts.length)];
-                randomAlert();
-              }}
-              className="p-1.5 md:p-2 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur transition-colors"
-              aria-label="Test alerts"
-              title="Test Alert UI"
+              onClick={() => setIsListOpen(!isListOpen)}
+              className="relative rounded-full bg-white/15 hover:bg-white/25 p-1.5 md:p-2 transition-colors"
+              aria-label="Toggle attendees list"
+              title="Toggle attendees list"
             >
-              <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
+              <List className="w-4 h-4 md:w-5 md:h-5 text-white" />
+              {scannedAttendees.length > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 md:h-5 md:w-5 rounded-full bg-emerald-500 text-white text-[10px] md:text-xs font-semibold flex items-center justify-center">
+                  {scannedAttendees.length > 99
+                    ? "99+"
+                    : scannedAttendees.length}
+                </span>
+              )}
             </button>
             <button
               onClick={toggleCamera}
@@ -538,7 +600,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
               onClick={async () => {
                 try {
                   await signOut();
-                  router.push("/scanner/login");
+                  router.push("/");
                 } catch (error) {
                   console.error("Sign out failed:", error);
                 }
@@ -556,9 +618,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
           </span>
           <span className="inline-flex items-center gap-1">
             Event ID:
-            <strong className="tracking-wide">
-              {eventId ?? "default"}
-            </strong>
+            <strong className="tracking-wide">{eventId ?? "default"}</strong>
           </span>
           <span className="hidden sm:inline-flex items-center gap-1">
             Last sync:
@@ -568,7 +628,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
       </div>
 
       {/* Camera View */}
-      <div className="flex-1 relative bg-black overflow-hidden">
+      <div className="flex-1 relative bg-black overflow-hidden min-h-0">
         <video
           ref={videoRef}
           className="w-full h-full object-cover"
@@ -580,8 +640,8 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         {isScanning && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="relative">
-              {/* Scanning frame - responsive sizing */}
-              <div className="relative w-[70vw] max-w-xs aspect-square rounded-[32px] border border-white/40 bg-white/5 backdrop-blur-sm shadow-2xl">
+              {/* Scanning frame - responsive sizing (no blur on video) */}
+              <div className="relative w-[70vw] max-w-xs aspect-square rounded-[32px] border border-white/40 bg-white/5 shadow-2xl">
                 <div className="absolute inset-4 rounded-3xl border border-dashed border-emerald-200/60" />
                 {/* Corner indicators */}
                 <div className="absolute inset-0">
@@ -592,7 +652,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
                 </div>
                 {/* Scanning line animation */}
                 <div className="absolute inset-0 overflow-hidden rounded-[32px]">
-                  <div className="absolute inset-x-4 h-1.5 bg-gradient-to-r from-transparent via-emerald-300 to-transparent rounded-full animate-scan" />
+                  <div className="absolute inset-x-4 h-1.5 bg-gradient-to-r from-transparent via-emerald-300 to-transparent rounded-full scanner-line" />
                 </div>
               </div>
               {/* Instruction text */}
@@ -652,42 +712,57 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         )}
       </div>
 
-      {/* Scanned Attendees List */}
-      <div className="bg-white border-t border-gray-200 shadow-lg">
-        <div className="px-3 md:px-4 py-1.5 md:py-2 border-b border-gray-200">
-          <h2 className="text-xs md:text-sm font-semibold text-gray-700">
-            Scanned Attendees ({scannedAttendees.length})
-          </h2>
-        </div>
-        <div className="max-h-48 overflow-y-auto">
-          {scannedAttendees.length === 0 ? (
-            <div className="px-3 md:px-4 py-6 md:py-8 text-center text-gray-500 text-xs md:text-sm">
-              No attendees scanned yet. Point camera at QR code to begin.
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {scannedAttendees.map((attendee, index) => (
-                <div
-                  key={`${attendee.attendee_id}-${attendee.scanned_at}-${index}`}
-                  className="px-3 md:px-4 py-2 md:py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium text-sm md:text-base text-gray-900">
-                      {attendee.attendee_id}
-                    </div>
-                    <div className="text-[10px] md:text-xs text-gray-600">
-                      {new Date(attendee.scanned_at).toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="ml-3 md:ml-4">
-                    <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
-                  </div>
-                </div>
-              ))}
+      {/* Desktop Side Panel */}
+      <div
+        className={`hidden md:flex flex-col bg-white border-l border-gray-200 shadow-lg transition-all duration-300 ease-in-out flex-shrink-0 ${
+          isListOpen ? "w-80" : "w-0"
+        } ${isListOpen ? "" : "overflow-hidden"} h-full`}
+      >
+        {isListOpen && (
+          <div className="flex flex-col h-full min-w-0">
+            <AttendeesListContent />
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Overlay Drawer */}
+      <>
+        {/* Backdrop */}
+        <div
+          className={`md:hidden fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+            isListOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+          onClick={() => setIsListOpen(false)}
+        />
+        {/* Drawer */}
+        <div
+          className={`md:hidden fixed inset-y-0 right-0 w-[85vw] max-w-sm bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out ${
+            isListOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          {isListOpen && (
+            <div className="flex flex-col h-full min-w-0">
+              <AttendeesListContent />
             </div>
           )}
         </div>
-      </div>
+      </>
+
+      {/* Mobile FAB (Floating Action Button) */}
+      {!isListOpen && scannedAttendees.length > 0 && (
+        <button
+          onClick={() => setIsListOpen(true)}
+          className="md:hidden fixed bottom-4 right-4 h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg flex items-center justify-center transition-all duration-200 z-30"
+          aria-label="View scanned attendees"
+        >
+          <div className="flex flex-col items-center">
+            <List className="w-5 h-5" />
+            <span className="text-[10px] font-semibold mt-0.5">
+              {scannedAttendees.length > 99 ? "99+" : scannedAttendees.length}
+            </span>
+          </div>
+        </button>
+      )}
     </div>
   );
 }

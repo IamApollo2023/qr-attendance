@@ -16,7 +16,8 @@ export function useActivityFilters({
 }: UseActivityFiltersProps) {
   const filteredActivities = useMemo(() => {
     return activities.filter((activity) => {
-      const searchTarget = `${activity.name} ${activity.description || ""} ${activity.location || ""}`.toLowerCase();
+      const searchTarget =
+        `${activity.name} ${activity.description || ""} ${activity.location || ""}`.toLowerCase();
       const matchesSearch = searchTarget.includes(
         filters.searchTerm.toLowerCase()
       );
@@ -31,5 +32,3 @@ export function useActivityFilters({
     filteredActivities,
   };
 }
-
-

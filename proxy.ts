@@ -74,6 +74,7 @@ export async function proxy(request: NextRequest) {
         .eq("id", user.id)
         .single();
 
+      // Regular admin routes - only admin role
       if (!profile || profile.role !== "admin") {
         // Not an admin - redirect to login
         if (request.nextUrl.pathname !== "/admin/login") {
@@ -86,6 +87,51 @@ export async function proxy(request: NextRequest) {
         if (request.nextUrl.pathname === "/admin/login") {
           return NextResponse.redirect(new URL("/admin", request.url));
         }
+      }
+    }
+  }
+
+  // Protect finance routes (excluding login)
+  if (
+    request.nextUrl.pathname.startsWith("/finance") &&
+    !request.nextUrl.pathname.startsWith("/finance/login")
+  ) {
+    if (!user) {
+      // Not authenticated - redirect to finance login
+      return NextResponse.redirect(new URL("/finance/login", request.url));
+    } else {
+      // Check if user has finance or admin role
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (
+        !profile ||
+        (profile.role !== "finance" && profile.role !== "admin")
+      ) {
+        // Not finance or admin - redirect to finance login
+        return NextResponse.redirect(
+          new URL("/finance/login?error=access_denied", request.url)
+        );
+      }
+    }
+  }
+
+  // Protect finance login route
+  if (request.nextUrl.pathname.startsWith("/finance/login")) {
+    if (user) {
+      // Check if user has finance or admin role
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile && (profile.role === "finance" || profile.role === "admin")) {
+        // Already authenticated - redirect to finance dashboard
+        return NextResponse.redirect(new URL("/finance", request.url));
       }
     }
   }

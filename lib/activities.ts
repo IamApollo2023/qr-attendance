@@ -109,5 +109,3 @@ export async function deleteActivity(id: string): Promise<void> {
     throw error;
   }
 }
-
-

@@ -75,7 +75,9 @@ export function MemberLocationFields({
     const load = async () => {
       try {
         setLoadingBarangays(true);
-        const data = await fetchBarangaysByCity(formData.city_municipality_code);
+        const data = await fetchBarangaysByCity(
+          formData.city_municipality_code
+        );
         setBarangays(data);
       } catch (e) {
         console.error("Failed to load barangays from PSGC", e);
@@ -148,8 +150,8 @@ export function MemberLocationFields({
             {!formData.province_code
               ? "Select province first"
               : loadingCities
-              ? "Loading cities…"
-              : "Select city / municipality"}
+                ? "Loading cities…"
+                : "Select city / municipality"}
           </option>
           {cities.map((c) => (
             <option key={c.code} value={c.code}>
@@ -173,8 +175,8 @@ export function MemberLocationFields({
             {!formData.city_municipality_code
               ? "Select city / municipality first"
               : loadingBarangays
-              ? "Loading barangays…"
-              : "Select barangay"}
+                ? "Loading barangays…"
+                : "Select barangay"}
           </option>
           {barangays.map((b) => (
             <option key={b.code} value={b.code}>
@@ -186,8 +188,3 @@ export function MemberLocationFields({
     </div>
   );
 }
-
-
-
-
-

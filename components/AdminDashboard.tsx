@@ -11,6 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 
 interface PaginationInfo {
@@ -58,6 +65,7 @@ export default function AdminDashboard({
   const [totalActiveMembers, setTotalActiveMembers] = useState(0);
   const [totalVisitors, setTotalVisitors] = useState(0);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
+  const [selectedAgeCategory, setSelectedAgeCategory] = useState<string>("Men");
   const isInitialMount = useRef(true);
 
   // Auth is already verified by middleware - no need for redundant client-side check
@@ -277,7 +285,6 @@ export default function AdminDashboard({
       fetchPaginatedData(pageFromUrl, eventFromUrl);
       loadAnalytics(eventFromUrl);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Set up real-time subscription
@@ -315,41 +322,47 @@ export default function AdminDashboard({
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
-        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+        <div className="flex flex-col gap-3 py-3 md:gap-6 md:py-6">
           {/* Header */}
           <div className="px-4 lg:px-6">
             <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-semibold tracking-tight">
+              <h1 className="text-lg md:text-3xl font-semibold tracking-tight">
                 Attendance analytics
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-base text-muted-foreground">
                 High-level overview of QR attendance trends.
               </p>
             </div>
           </div>
 
           {/* High-level membership KPIs */}
-          <div className="grid grid-cols-1 gap-4 px-4 md:grid-cols-3 lg:px-6">
+          <div className="grid grid-cols-2 gap-3 md:gap-4 px-4 lg:px-6">
             <Card className="@container/card">
               <CardHeader className="relative">
-                <CardDescription>Total members</CardDescription>
-                <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
+                <CardDescription className="text-xs md:text-sm">
+                  Total members
+                </CardDescription>
+                <CardTitle className="text-lg md:text-3xl font-semibold tabular-nums">
                   {isAnalyticsLoading ? "…" : totalMembers}
                 </CardTitle>
               </CardHeader>
             </Card>
             <Card className="@container/card">
               <CardHeader className="relative">
-                <CardDescription>Active members (last 30 days)</CardDescription>
-                <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
+                <CardDescription className="text-xs md:text-sm">
+                  Active members <br /> (last 30 days)
+                </CardDescription>
+                <CardTitle className="text-lg md:text-3xl font-semibold tabular-nums">
                   {isAnalyticsLoading ? "…" : totalActiveMembers}
                 </CardTitle>
               </CardHeader>
             </Card>
-            <Card className="@container/card">
+            <Card className="@container/card col-span-2">
               <CardHeader className="relative">
-                <CardDescription>Visitors (last 30 days)</CardDescription>
-                <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
+                <CardDescription className="text-xs md:text-sm">
+                  Visitors (last 30 days)
+                </CardDescription>
+                <CardTitle className="text-lg md:text-3xl font-semibold tabular-nums">
                   {isAnalyticsLoading ? "…" : totalVisitors}
                 </CardTitle>
               </CardHeader>
@@ -357,45 +370,36 @@ export default function AdminDashboard({
           </div>
 
           {/* Age-group analytics */}
-          <div className="grid grid-cols-1 gap-4 px-4 md:grid-cols-3 lg:grid-cols-5 lg:px-6">
+          <div className="px-4 lg:px-6">
             <Card className="@container/card">
-              <CardHeader className="pb-2">
-                <CardDescription>Men</CardDescription>
-                <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-                  {ageBreakdown.Men}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="@container/card">
-              <CardHeader className="pb-2">
-                <CardDescription>Women</CardDescription>
-                <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-                  {ageBreakdown.Women}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="@container/card">
-              <CardHeader className="pb-2">
-                <CardDescription>YAN</CardDescription>
-                <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-                  {ageBreakdown.YAN}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="@container/card">
-              <CardHeader className="pb-2">
-                <CardDescription>KKB</CardDescription>
-                <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-                  {ageBreakdown.KKB}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="@container/card">
-              <CardHeader className="pb-2">
-                <CardDescription>Kids</CardDescription>
-                <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-                  {ageBreakdown.Children}
-                </CardTitle>
+              <CardHeader className="relative">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <CardDescription className="text-xs md:text-sm">
+                      Age Category
+                    </CardDescription>
+                    <CardTitle className="text-lg md:text-3xl font-semibold tabular-nums">
+                      {ageBreakdown[
+                        selectedAgeCategory as keyof typeof ageBreakdown
+                      ] ?? 0}
+                    </CardTitle>
+                  </div>
+                  <Select
+                    value={selectedAgeCategory}
+                    onValueChange={setSelectedAgeCategory}
+                  >
+                    <SelectTrigger className="w-[120px] md:w-[140px] text-xs md:text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Men">Men</SelectItem>
+                      <SelectItem value="Women">Women</SelectItem>
+                      <SelectItem value="YAN">YAN</SelectItem>
+                      <SelectItem value="KKB">KKB</SelectItem>
+                      <SelectItem value="Children">Kids</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
             </Card>
           </div>

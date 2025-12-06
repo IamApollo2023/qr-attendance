@@ -83,5 +83,3 @@ export const activityRepository = {
     return (data || []) as Activity[];
   },
 };
-
-

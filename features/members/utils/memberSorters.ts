@@ -48,12 +48,3 @@ export function sortMembers(
   );
   return data;
 }
-
-
-
-
-
-
-
-
-
