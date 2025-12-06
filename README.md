@@ -68,20 +68,6 @@ A production-ready web application for event facilitators to scan QR codes and t
    Navigate to [http://localhost:3000](http://localhost:3000)
    - You'll see a landing page with two options: **Scanner** and **Admin Dashboard**
 
-### Testing on Mobile Device
-
-To test on your mobile phone, use ngrok to create a secure tunnel:
-
-```bash
-# First, authenticate ngrok (one-time setup)
-npx ngrok config add-authtoken YOUR_AUTH_TOKEN
-
-# Then run with ngrok tunnel
-pnpm dev:tunnel
-```
-
-See [NGROK_SETUP.md](./NGROK_SETUP.md) for detailed instructions.
-
 ## Usage
 
 ### Scanner Flow
@@ -132,7 +118,7 @@ Each attendance record contains:
 
 Vercel is the best option for this app:
 
-- ✅ **Permanent HTTPS URL** (no changing URLs like ngrok)
+- ✅ **Permanent HTTPS URL**
 - ✅ **Free tier** with generous limits
 - ✅ **Automatic HTTPS** (required for camera)
 - ✅ **Easy setup** - connect GitHub and deploy
@@ -148,8 +134,6 @@ See [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) for detailed deployment instructions.
 4. Deploy!
 
 **Alternative:** You can also deploy to Netlify, Railway, or any platform that supports Next.js.
-
-**For local testing:** Use ngrok (see [NGROK_SETUP.md](./NGROK_SETUP.md)) for quick testing without deploying.
 
 ## Error Handling
 
