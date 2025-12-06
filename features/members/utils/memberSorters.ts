@@ -20,17 +20,22 @@ export function sortMembers(
         aVal = a.member_id || "";
         bVal = b.member_id || "";
         break;
-      case "name":
-        aVal = `${a.last_name || ""} ${a.first_name || ""}`;
-        bVal = `${b.last_name || ""} ${b.first_name || ""}`;
+      case "first_name":
+        aVal = a.first_name || "";
+        bVal = b.first_name || "";
+        break;
+      case "last_name":
+        aVal = a.last_name || "";
+        bVal = b.last_name || "";
         break;
       case "address":
-        aVal = a.address || "";
-        bVal = b.address || "";
-        break;
-      case "birthday":
-        aVal = a.birthday || "";
-        bVal = b.birthday || "";
+        // Format: "Barangay, City/Municipality"
+        const aBarangay = a.barangay_name || "";
+        const aCity = a.city_municipality_name || "";
+        const bBarangay = b.barangay_name || "";
+        const bCity = b.city_municipality_name || "";
+        aVal = `${aBarangay}, ${aCity}`.trim();
+        bVal = `${bBarangay}, ${bCity}`.trim();
         break;
       case "age_category":
         aVal = a.age_category || "";

@@ -87,18 +87,19 @@ export function OfferingsManagement({ initialData }: OfferingsManagementProps) {
   };
 
   const handleDelete = async (offering: Offering) => {
-    const confirmed = await showAlert(
-      "Delete Offering",
-      `Are you sure you want to delete this offering of ${new Intl.NumberFormat(
+    const confirmed = await showAlert({
+      type: "warning",
+      title: "Delete Offering",
+      message: `Are you sure you want to delete this offering of ${new Intl.NumberFormat(
         "en-PH",
         {
           style: "currency",
           currency: "PHP",
         }
       ).format(offering.amount)}?`,
-      "Delete",
-      "Cancel"
-    );
+      confirmText: "Delete",
+      cancelText: "Cancel",
+    });
 
     if (confirmed) {
       try {

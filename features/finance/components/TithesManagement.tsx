@@ -85,18 +85,19 @@ export function TithesManagement({ initialData }: TithesManagementProps) {
   };
 
   const handleDelete = async (tithe: Tithe) => {
-    const confirmed = await showAlert(
-      "Delete Tithe",
-      `Are you sure you want to delete this tithe of ${new Intl.NumberFormat(
+    const confirmed = await showAlert({
+      type: "warning",
+      title: "Delete Tithe",
+      message: `Are you sure you want to delete this tithe of ${new Intl.NumberFormat(
         "en-PH",
         {
           style: "currency",
           currency: "PHP",
         }
       ).format(tithe.amount)}?`,
-      "Delete",
-      "Cancel"
-    );
+      confirmText: "Delete",
+      cancelText: "Cancel",
+    });
 
     if (confirmed) {
       try {

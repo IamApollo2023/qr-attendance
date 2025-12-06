@@ -85,18 +85,19 @@ export function PledgesManagement({ initialData }: PledgesManagementProps) {
   };
 
   const handleDelete = async (pledge: Pledge) => {
-    const confirmed = await showAlert(
-      "Delete Pledge",
-      `Are you sure you want to delete this pledge of ${new Intl.NumberFormat(
+    const confirmed = await showAlert({
+      type: "warning",
+      title: "Delete Pledge",
+      message: `Are you sure you want to delete this pledge of ${new Intl.NumberFormat(
         "en-PH",
         {
           style: "currency",
           currency: "PHP",
         }
       ).format(pledge.amount)}?`,
-      "Delete",
-      "Cancel"
-    );
+      confirmText: "Delete",
+      cancelText: "Cancel",
+    });
 
     if (confirmed) {
       try {

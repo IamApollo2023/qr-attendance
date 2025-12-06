@@ -285,7 +285,14 @@ export default function AdminDashboard({
       fetchPaginatedData(pageFromUrl, eventFromUrl);
       loadAnalytics(eventFromUrl);
     }
-  }, [searchParams]);
+  }, [
+    searchParams,
+    pagination,
+    eventFilter,
+    eventId,
+    fetchPaginatedData,
+    loadAnalytics,
+  ]);
 
   // Set up real-time subscription
   useEffect(() => {

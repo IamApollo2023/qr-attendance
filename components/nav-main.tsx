@@ -78,11 +78,12 @@ export function NavMain({ items }: { items: NavItem[] }) {
             }
 
             // Regular menu item
-            const isActive =
+            const isActive = Boolean(
               pathname === item.url ||
               (item.url !== "/admin" &&
                 item.url &&
-                pathname?.startsWith(item.url));
+                pathname?.startsWith(item.url))
+            );
 
             return (
               <SidebarMenuItem key={item.title}>

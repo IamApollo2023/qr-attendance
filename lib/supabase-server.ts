@@ -101,7 +101,13 @@ async function fetchAttendanceData(
     throw error;
   }
 
-  const attendanceRecords = (records || []) as any[] as AttendanceRecord[];
+  // Transform data to ensure member is a single object, not an array
+  const attendanceRecords = (records || []).map((record: any) => ({
+    ...record,
+    member: Array.isArray(record.member)
+      ? record.member[0] || undefined
+      : record.member || undefined,
+  })) as AttendanceRecord[];
   const totalPages = Math.ceil((totalCount || 0) / pageSize);
 
   return {
@@ -203,7 +209,15 @@ async function fetchAttendanceRecordsOnly(
     throw error;
   }
 
-  return (data || []) as AttendanceRecord[];
+  // Transform data to ensure member is a single object, not an array
+  const transformedData = (data || []).map((record: any) => ({
+    ...record,
+    member: Array.isArray(record.member)
+      ? record.member[0] || undefined
+      : record.member || undefined,
+  }));
+
+  return transformedData as AttendanceRecord[];
 }
 
 export async function getAttendanceRecordsForTabs(

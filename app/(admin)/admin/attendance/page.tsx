@@ -1,5 +1,6 @@
 import { getAttendanceRecordsForTabs } from "@/lib/supabase-server";
 import type { AttendanceRecord } from "@/types";
+
 import { AttendanceManagement } from "@/components/AttendanceManagement";
 
 interface AttendancePageSearchParams {

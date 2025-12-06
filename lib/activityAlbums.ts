@@ -167,8 +167,10 @@ export async function createActivityAlbum(
   }
 
   const orderedUploads =
-    input.ordered_images?.filter((item) => item.type === "new" && item.file) ||
-    [];
+    input.ordered_images?.filter(
+      (item): item is Extract<OrderedImageInput, { type: "new" }> =>
+        item.type === "new"
+    ) || [];
 
   // Upload images if provided (prefer ordered payload)
   if (orderedUploads.length > 0) {

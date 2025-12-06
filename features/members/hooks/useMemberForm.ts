@@ -30,7 +30,7 @@ export function useMemberForm({
     barangay_name: "",
     birthday: "",
     gender: "male",
-    membership_type: "MEMBER",
+    membership_type: "Attendee",
     member_id: "",
   });
 
