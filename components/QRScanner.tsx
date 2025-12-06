@@ -228,11 +228,8 @@ export default function QRScanner({
 
       if (error) {
         console.error("Error fetching active event:", error);
-        return null;
+        return;
       }
-
-      const newEventName = data?.name;
-      const oldEventName = currentEventName;
 
       if (data) {
         setCurrentEventId(data.name);
@@ -241,13 +238,10 @@ export default function QRScanner({
         setCurrentEventId(undefined);
         setCurrentEventName(undefined);
       }
-
-      return { newEventName, oldEventName };
     } catch (err) {
       console.error("Failed to fetch active event:", err);
-      return null;
     }
-  }, [currentEventName]);
+  }, []);
 
   // Set up realtime subscription for events table
   useEffect(() => {
@@ -258,25 +252,46 @@ export default function QRScanner({
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "UPDATE",
           schema: "public",
           table: "events",
         },
-        async (payload) => {
-          console.log("Event change detected:", payload);
-          // When any event's is_active changes, refetch the active event
-          const result = await fetchActiveEvent();
-          // Show notification if event changed
-          if (
-            result &&
-            result.oldEventName &&
-            result.oldEventName !== result.newEventName
-          ) {
-            info(
-              "Event Updated",
-              `Active event changed to: ${result.newEventName || "None"}`,
-              3000
-            );
+        (payload) => {
+          const oldData = payload.old as { is_active?: boolean; name?: string };
+          const newData = payload.new as { is_active?: boolean; name?: string };
+
+          // Process when is_active field changes
+          if (oldData?.is_active !== newData?.is_active) {
+            // Event became active - use payload directly
+            if (newData?.is_active === true && newData?.name) {
+              const oldEventName = currentEventName;
+              setCurrentEventId(newData.name);
+              setCurrentEventName(newData.name);
+
+              // Show toast only if event actually changed
+              if (oldEventName !== newData.name) {
+                info(
+                  "Event Updated",
+                  `Active event changed to: ${newData.name}`,
+                  3000
+                );
+              }
+            }
+            // Event became inactive - only refetch if it's the current active event
+            // Otherwise, wait for the activation event (trigger ensures one is activated)
+            else if (
+              newData?.is_active === false &&
+              newData?.name === currentEventName
+            ) {
+              // Current event was deactivated - show toast and refetch to get the new active event
+              info(
+                "Event Deactivated",
+                `${newData.name} has been deactivated`,
+                2000
+              );
+              // Refetch to get the new active event (trigger ensures one is activated)
+              fetchActiveEvent();
+            }
           }
         }
       )
@@ -297,6 +312,22 @@ export default function QRScanner({
     setCurrentEventId(eventId);
     setCurrentEventName(eventName);
   }, [eventId, eventName]);
+
+  // Get gradient classes based on event name
+  const getEventGradient = (eventName?: string): string => {
+    switch (eventName) {
+      case "Worship Service":
+        return "bg-gradient-to-r from-[#1c2d44] via-[#274464] to-[#5b84ad]";
+      case "Life Group":
+        return "bg-gradient-to-r from-green-700 via-green-600 to-green-500";
+      case "Night of Power":
+        return "bg-gradient-to-r from-purple-900 via-purple-700 to-purple-600";
+      case "Youth Zone":
+        return "bg-gradient-to-r from-[#b89a0f] via-[#ffde17] to-[#d4b814]";
+      default:
+        return "bg-gradient-to-r from-[#1c2d44] via-[#274464] to-[#5b84ad]";
+    }
+  };
 
   // Load existing attendance records on mount and when currentEventId changes
   useEffect(() => {
@@ -598,17 +629,19 @@ export default function QRScanner({
   // Attendees list content component (reusable)
   const AttendeesListContent = () => (
     <>
-      <div className="px-3 md:px-4 py-1.5 md:py-2 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-        <h2 className="text-xs md:text-sm font-semibold text-gray-700">
+      <div
+        className={`px-3 md:px-4 py-1.5 md:py-2 ${getEventGradient(currentEventName)} flex items-center justify-between flex-shrink-0`}
+      >
+        <h2 className="text-xs md:text-sm font-semibold text-white">
           Scanned Attendees ({scannedAttendees.length})
         </h2>
         {/* Close button for mobile drawer */}
         <button
           onClick={() => setIsListOpen(false)}
-          className="md:hidden p-1 rounded-full hover:bg-gray-100 transition-colors"
+          className="md:hidden p-1 rounded-full hover:bg-white/20 transition-colors"
           aria-label="Close list"
         >
-          <X className="w-4 h-4 text-gray-600" />
+          <X className="w-4 h-4 text-white" />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -654,7 +687,9 @@ export default function QRScanner({
       )}
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#1c2d44] via-[#274464] to-[#5b84ad] px-3 md:px-6 py-3 md:py-4 shadow-lg text-white flex-shrink-0 z-10">
+      <div
+        className={`${getEventGradient(currentEventName)} px-3 md:px-6 py-3 md:py-4 shadow-lg text-white flex-shrink-0 z-10`}
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Image
@@ -708,8 +743,10 @@ export default function QRScanner({
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] md:text-xs text-white/80">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1">
-            <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
-            Ready for next scan
+            <span
+              className={`h-2 w-2 rounded-full ${error ? "bg-red-300" : "bg-emerald-300"} animate-pulse`}
+            />
+            {error ? "Error" : "Ready for next scan"}
           </span>
           <span className="inline-flex items-center gap-1">
             Event:
@@ -788,7 +825,7 @@ export default function QRScanner({
               </p>
               <button
                 onClick={requestCameraPermission}
-                className="px-4 md:px-6 py-2 md:py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm md:text-base font-medium transition-colors"
+                className={`px-4 md:px-6 py-2 md:py-3 ${getEventGradient(currentEventName)} text-white rounded-lg text-sm md:text-base font-medium transition-all shadow-md hover:shadow-lg`}
               >
                 Grant Camera Permission
               </button>
@@ -801,7 +838,7 @@ export default function QRScanner({
           <div className="absolute inset-0 flex items-center justify-center bg-white">
             <button
               onClick={requestCameraPermission}
-              className="px-6 md:px-8 py-3 md:py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm md:text-lg transition-colors shadow-lg"
+              className={`px-6 md:px-8 py-3 md:py-4 ${getEventGradient(currentEventName)} text-white rounded-lg font-medium text-sm md:text-lg transition-all shadow-lg hover:shadow-xl`}
             >
               Start Scanning
             </button>
@@ -849,7 +886,7 @@ export default function QRScanner({
       {!isListOpen && scannedAttendees.length > 0 && (
         <button
           onClick={() => setIsListOpen(true)}
-          className="md:hidden fixed bottom-4 right-4 h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg flex items-center justify-center transition-all duration-200 z-30"
+          className={`md:hidden fixed bottom-4 right-4 h-14 w-14 rounded-full ${getEventGradient(currentEventName)} text-white shadow-lg flex items-center justify-center transition-all duration-200 z-30 hover:shadow-xl`}
           aria-label="View scanned attendees"
         >
           <div className="flex flex-col items-center">

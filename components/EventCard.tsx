@@ -63,11 +63,28 @@ export function EventCard({
   };
 
   return (
-    <div className="group relative flex flex-col gap-4 p-0 bg-white rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all duration-200 w-full overflow-hidden">
-      {/* Active Badge */}
+    <div
+      className={`group relative flex flex-col gap-4 p-0 bg-white rounded-lg border-2 transition-all duration-200 w-full overflow-hidden ${
+        isActive
+          ? "border-blue-500 shadow-lg shadow-blue-500/20"
+          : "border-gray-200 hover:border-blue-500 hover:shadow-lg"
+      }`}
+    >
+      {/* Pulsing ring around active card */}
       {isActive && (
-        <div className="absolute top-4 right-4 px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full z-10">
-          Active
+        <div className="absolute -inset-0.5 rounded-lg bg-blue-500 opacity-20 animate-pulse -z-10" />
+      )}
+      {/* Active Badge with Pulse */}
+      {isActive && (
+        <div className="absolute top-4 right-4 z-10">
+          <div className="relative">
+            {/* Pulsing ring */}
+            <div className="absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-75" />
+            {/* Badge */}
+            <div className="relative px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full animate-pulse">
+              Active
+            </div>
+          </div>
         </div>
       )}
 

@@ -151,3 +151,4 @@ SELECT
 FROM information_schema.triggers
 WHERE trigger_schema = 'public';
 
+
