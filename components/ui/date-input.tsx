@@ -30,7 +30,13 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
     };
 
     const [displayValue, setDisplayValue] = React.useState(() =>
-      convertToDisplay(props.value)
+      convertToDisplay(
+        typeof props.value === "string"
+          ? props.value
+          : props.value !== undefined && props.value !== null
+            ? String(props.value)
+            : undefined
+      )
     );
     const [isEmpty, setIsEmpty] = React.useState(!props.value);
 
@@ -155,14 +161,20 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
     // Update display value when value prop changes externally (but not while focused or typing)
     React.useEffect(() => {
       if (!isFocused && props.value !== undefined) {
-        const converted = convertToDisplay(props.value);
+        const valueAsString =
+          typeof props.value === "string"
+            ? props.value
+            : props.value !== undefined && props.value !== null
+              ? String(props.value)
+              : undefined;
+        const converted = convertToDisplay(valueAsString);
         // Only update if the converted value is different from current display
         if (converted !== displayValue) {
           setDisplayValue(converted);
           setIsEmpty(!props.value);
         }
       }
-    }, [props.value, isFocused]);
+    }, [props.value, isFocused, displayValue]);
 
     return (
       <div className="w-full">
