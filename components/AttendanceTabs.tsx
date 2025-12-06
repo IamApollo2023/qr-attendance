@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type TabKey =
+  | "ALL"
   | "MEN"
   | "WOMEN"
   | "YAN_MALE"
@@ -29,6 +30,7 @@ interface AttendanceTabsProps {
 }
 
 const TABS: { key: TabKey; label: string }[] = [
+  { key: "ALL", label: "All" },
   { key: "MEN", label: "MEN" },
   { key: "WOMEN", label: "WOMEN" },
   { key: "YAN_MALE", label: "YAN MALE" },
@@ -40,6 +42,11 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 function matchesTab(record: AttendanceRecord, tab: TabKey): boolean {
+  // "ALL" shows all records
+  if (tab === "ALL") {
+    return true;
+  }
+
   const member = record.member;
   if (!member) return false;
 
@@ -71,8 +78,9 @@ function matchesTab(record: AttendanceRecord, tab: TabKey): boolean {
 const PAGE_SIZE = 25;
 
 export function AttendanceTabs({ records, eventId }: AttendanceTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>("MEN");
+  const [activeTab, setActiveTab] = useState<TabKey>("ALL");
   const [pageByTab, setPageByTab] = useState<Record<TabKey, number>>({
+    ALL: 1,
     MEN: 1,
     WOMEN: 1,
     YAN_MALE: 1,
@@ -85,6 +93,7 @@ export function AttendanceTabs({ records, eventId }: AttendanceTabsProps) {
 
   const filteredByTab: Record<TabKey, AttendanceRecord[]> = useMemo(() => {
     const base: Record<TabKey, AttendanceRecord[]> = {
+      ALL: [],
       MEN: [],
       WOMEN: [],
       YAN_MALE: [],
@@ -122,7 +131,7 @@ export function AttendanceTabs({ records, eventId }: AttendanceTabsProps) {
     setPageByTab((prev) => ({ ...prev, [activeTab]: newPage }));
   };
 
-  const selectedLabel = TABS.find((t) => t.key === activeTab)?.label || "MEN";
+  const selectedLabel = TABS.find((t) => t.key === activeTab)?.label || "All";
 
   return (
     <Card
@@ -163,9 +172,6 @@ export function AttendanceTabs({ records, eventId }: AttendanceTabsProps) {
             <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
               <tr>
                 <th className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs">
-                  Member ID
-                </th>
-                <th className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs">
                   Name
                 </th>
                 <th className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs mobile:hidden">
@@ -180,9 +186,6 @@ export function AttendanceTabs({ records, eventId }: AttendanceTabsProps) {
               {pagedRecords.length === 0
                 ? Array.from({ length: 5 }).map((_, idx) => (
                     <tr key={idx} className="animate-pulse">
-                      <td className="px-4 py-3">
-                        <div className="h-3 w-24 rounded bg-muted" />
-                      </td>
                       <td className="px-4 py-3">
                         <div className="h-3 w-40 rounded bg-muted" />
                       </td>
@@ -199,9 +202,6 @@ export function AttendanceTabs({ records, eventId }: AttendanceTabsProps) {
                       key={rec.id}
                       className="hover:bg-gray-50 transition-colors"
                     >
-                      <td className="px-4 py-3 text-gray-900 font-mono font-semibold text-[10px] md:text-xs whitespace-nowrap">
-                        {rec.attendee_id}
-                      </td>
                       <td className="px-4 py-3 text-gray-700 text-xs md:text-sm whitespace-nowrap">
                         {rec.member
                           ? `${rec.member.first_name} ${rec.member.last_name}`

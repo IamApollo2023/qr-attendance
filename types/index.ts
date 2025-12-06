@@ -98,6 +98,22 @@ export interface ActivityAlbumImage {
   created_at: string;
 }
 
+// Event Types
+export interface Event {
+  id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventStats {
+  total: number;
+  today: number;
+  unique: number;
+}
+
 // Login Types
 export interface LoginResult {
   success: boolean;

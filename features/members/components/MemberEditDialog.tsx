@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import type { MemberFormData } from "../types/member.types";
+import type { Member } from "@/types";
 import { MemberLocationFields } from "@/components/MemberLocationFields";
 import {
   Dialog,
@@ -14,9 +15,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 
-interface MemberAddDialogProps {
+interface MemberEditDialogProps {
   isOpen: boolean;
   formData: MemberFormData;
+  editingMember: Member | null;
   onFormDataChange: <K extends keyof MemberFormData>(
     field: K,
     value: MemberFormData[K]
@@ -25,13 +27,14 @@ interface MemberAddDialogProps {
   onCancel: () => void | Promise<boolean | void>; // Return true to close, false/void to stay open
 }
 
-export function MemberAddDialog({
+export function MemberEditDialog({
   isOpen,
   formData,
+  editingMember,
   onFormDataChange,
   onSubmit,
   onCancel,
-}: MemberAddDialogProps) {
+}: MemberEditDialogProps) {
   const [internalOpen, setInternalOpen] = useState(isOpen);
   const isClosingRef = useRef(false);
 
@@ -61,13 +64,15 @@ export function MemberAddDialog({
     }
   };
 
+  if (!editingMember) return null;
+
   return (
     <Dialog open={internalOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Member</DialogTitle>
+          <DialogTitle>Edit Member</DialogTitle>
           <DialogDescription>
-            Register a new member to the system. Fill in all required fields.
+            Update member information. Fill in all required fields.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3 mt-4">
@@ -209,7 +214,7 @@ export function MemberAddDialog({
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button type="submit">Add Member</Button>
+            <Button type="submit">Save Changes</Button>
           </DialogFooter>
         </form>
       </DialogContent>

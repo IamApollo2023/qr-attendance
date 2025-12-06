@@ -1,4 +1,5 @@
 import dynamic from "next/dynamic";
+import { getActiveEvent } from "@/lib/events";
 
 // Code-split heavy QRScanner component - only loads when needed
 const QRScanner = dynamic(() => import("@/components/QRScanner"), {
@@ -11,11 +12,15 @@ const QRScanner = dynamic(() => import("@/components/QRScanner"), {
   // We don't need `ssr: false` here; QRScanner itself is a client component.
 });
 
-export default function ScannerPage() {
+export default async function ScannerPage() {
   // Auth is already checked by middleware, so we can trust the user is authenticated
+  // Fetch active event server-side
+  const activeEvent = await getActiveEvent();
+  const eventId = activeEvent?.name || undefined;
+
   return (
     <div className="relative">
-      <QRScanner eventId="default" />
+      <QRScanner eventId={eventId} eventName={activeEvent?.name} />
     </div>
   );
 }

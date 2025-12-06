@@ -24,6 +24,7 @@ export { handleLogin, type LoginResult } from "./login-utils";
 export {
   getNextMemberId,
   createMember,
+  getMemberById,
   getMemberByMemberId,
   getAllMembers,
   updateMember,

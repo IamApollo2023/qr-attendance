@@ -31,7 +31,7 @@ import {
   MemberTable,
   CSVImportModal,
   MemberSegmentSelector,
-  MemberEditDrawer,
+  MemberEditDialog,
   MemberAddDialog,
   MemberSearchDialog,
   PrintDialog,
@@ -50,7 +50,7 @@ export default function MembersManagement({
   const router = useRouter();
   const { success, error: showError, showAlert } = useToastContext();
 
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
@@ -75,7 +75,7 @@ export default function MembersManagement({
       success(editingMember ? "Updated!" : "Registered!", message, 2000);
       const currentPage = pagination?.page || 1;
       loadMembers(currentPage);
-      setIsFormOpen(false);
+      setIsEditDialogOpen(false);
       setIsAddDialogOpen(false);
     },
     onError: (error) => showError("Error", error, 3000),
@@ -281,12 +281,31 @@ export default function MembersManagement({
     setIsAddDialogOpen(true);
   };
 
-  const handleEditWithDrawer = useCallback(
-    (member: Member) => {
-      handleEdit(member);
-      setIsFormOpen(true);
+  const handleEditWithDialog = useCallback(
+    async (member: Member) => {
+      try {
+        // Fetch fresh member data from database
+        const { getMemberById } = await import("@/lib");
+        const freshMember = await getMemberById(member.id);
+
+        if (!freshMember) {
+          showError("Error", "Member not found in database", 3000);
+          return;
+        }
+
+        // Use fresh data to populate form
+        handleEdit(freshMember);
+        setIsEditDialogOpen(true);
+      } catch (error: any) {
+        console.error("Failed to fetch member:", error);
+        showError(
+          "Error",
+          error?.message || "Failed to load member data",
+          3000
+        );
+      }
     },
-    [handleEdit]
+    [handleEdit, showError]
   );
 
   // Check if form has unsaved changes
@@ -305,11 +324,14 @@ export default function MembersManagement({
 
     // For editing: check if form differs from original member
     const original = editingMember;
+    const originalBirthday = original.birthday
+      ? original.birthday.split("T")[0]
+      : "";
     return (
       formData.first_name !== original.first_name ||
       formData.middle_name !== (original.middle_name || "") ||
       formData.last_name !== original.last_name ||
-      formData.birthday !== original.birthday.split("T")[0] ||
+      formData.birthday !== originalBirthday ||
       formData.gender !== original.gender ||
       formData.membership_type !== original.membership_type ||
       formData.classification !== (original.classification || undefined) ||
@@ -320,7 +342,7 @@ export default function MembersManagement({
     );
   }, [formData, editingMember]);
 
-  const handleDrawerCancel = useCallback(async () => {
+  const handleEditDialogCancel = useCallback(async (): Promise<boolean> => {
     if (hasUnsavedChanges()) {
       const confirmed = await showAlert({
         type: "warning",
@@ -330,23 +352,24 @@ export default function MembersManagement({
         cancelText: "No, keep editing",
       });
 
-      // Explicitly check - if user chose to keep editing, do nothing
+      // Explicitly check - if user chose to keep editing, return false to stay open
       if (confirmed === false) {
-        return; // User chose "No, keep editing" - stay in the form
+        return false; // User chose "No, keep editing" - stay in the form
       }
 
       // Only proceed if user explicitly confirmed (confirmed === true)
       if (confirmed !== true) {
-        return; // Safety check - if promise didn't resolve properly, don't close
+        return false; // Safety check - if promise didn't resolve properly, don't close
       }
     }
 
-    // Only close if user confirmed or there are no unsaved changes
+    // User confirmed or no unsaved changes - close the dialog
     handleCancel();
-    setIsFormOpen(false);
+    setIsEditDialogOpen(false);
+    return true; // Return true to indicate dialog should close
   }, [hasUnsavedChanges, showAlert, handleCancel]);
 
-  const handleAddDialogCancel = useCallback(async () => {
+  const handleAddDialogCancel = useCallback(async (): Promise<boolean> => {
     if (hasUnsavedChanges()) {
       const confirmed = await showAlert({
         type: "warning",
@@ -356,20 +379,21 @@ export default function MembersManagement({
         cancelText: "No, keep editing",
       });
 
-      // Explicitly check - if user chose to keep editing, do nothing
+      // Explicitly check - if user chose to keep editing, return false to stay open
       if (confirmed === false) {
-        return; // User chose "No, keep editing" - stay in the form
+        return false; // User chose "No, keep editing" - stay in the form
       }
 
       // Only proceed if user explicitly confirmed (confirmed === true)
       if (confirmed !== true) {
-        return; // Safety check - if promise didn't resolve properly, don't close
+        return false; // Safety check - if promise didn't resolve properly, don't close
       }
     }
 
-    // Only close if user confirmed or there are no unsaved changes
+    // User confirmed or no unsaved changes - close the dialog
     handleCancel();
     setIsAddDialogOpen(false);
+    return true; // Return true to indicate dialog should close
   }, [hasUnsavedChanges, showAlert, handleCancel]);
 
   return (
@@ -454,7 +478,7 @@ export default function MembersManagement({
               setDialogSearchInput(""); // Clear search when closing
             }}
             allMembers={members}
-            onMemberClick={(member) => handleEditWithDrawer(member)}
+            onMemberClick={(member) => handleEditWithDialog(member)}
           />
 
           {/* Members Table with Selector */}
@@ -493,10 +517,7 @@ export default function MembersManagement({
                 onPageChange={handlePageChange}
                 onPageSizeChange={handlePageSizeChange}
                 onSetOpenActionRowId={setOpenActionRowId}
-                onViewQR={(member) => {
-                  window.open(`/attendee?id=${member.member_id}`, "_blank");
-                }}
-                onEdit={handleEditWithDrawer}
+                onEdit={handleEditWithDialog}
                 onDelete={handleDelete}
               />
             </CardContent>
@@ -519,13 +540,13 @@ export default function MembersManagement({
         onCancel={handleAddDialogCancel}
       />
 
-      <MemberEditDrawer
-        isOpen={isFormOpen && !!editingMember}
+      <MemberEditDialog
+        isOpen={isEditDialogOpen && !!editingMember}
         formData={formData}
         editingMember={editingMember}
         onFormDataChange={updateFormField}
         onSubmit={handleSubmit}
-        onCancel={handleDrawerCancel}
+        onCancel={handleEditDialogCancel}
       />
     </div>
   );

@@ -98,16 +98,17 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
       const limitedDigits = digitsOnly.slice(0, 8);
 
       // Format with slashes: MM/DD/YYYY
+      // Add separators immediately as user types
       let formatted = "";
       if (limitedDigits.length > 0) {
         if (limitedDigits.length <= 2) {
-          // Just month (e.g., "01" or "1")
-          formatted = limitedDigits;
+          // Month - add separator after month (e.g., "1" -> "1/", "12" -> "12/")
+          formatted = `${limitedDigits}/`;
         } else if (limitedDigits.length <= 4) {
-          // Month + day (e.g., "0101" -> "01/01")
-          formatted = `${limitedDigits.slice(0, 2)}/${limitedDigits.slice(2)}`;
+          // Month + day - add separator after day (e.g., "123" -> "12/3/", "1234" -> "12/34/")
+          formatted = `${limitedDigits.slice(0, 2)}/${limitedDigits.slice(2)}/`;
         } else {
-          // Month + day + year (e.g., "01012000" -> "01/01/2000")
+          // Month + day + year (e.g., "12345" -> "12/34/5", "12345678" -> "12/34/5678")
           formatted = `${limitedDigits.slice(0, 2)}/${limitedDigits.slice(2, 4)}/${limitedDigits.slice(4)}`;
         }
       }
@@ -118,15 +119,22 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
       const input = e.currentTarget;
       const inputValue = input.value;
 
-      // Format the input
+      // Extract digits to count them for cursor positioning
+      const digitsOnly = inputValue.replace(/\D/g, "");
+      const digitCount = digitsOnly.length;
+
+      // Format the input with separators
       const formatted = formatDateInput(inputValue);
 
-      // Directly update the input value immediately (before React re-renders)
-      input.value = formatted;
-
-      // Update state to keep React in sync
+      // Update state immediately so React re-renders with formatted value
       setDisplayValue(formatted);
       setIsEmpty(!formatted);
+
+      // Also directly update the input value to ensure it shows immediately
+      // This is needed because React's controlled input might lag
+      if (input.value !== formatted) {
+        input.value = formatted;
+      }
 
       // Convert to YYYY-MM-DD for onChange (backend format) only if complete
       let backendValue = "";
@@ -142,9 +150,28 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
       } as React.ChangeEvent<HTMLInputElement>;
       props.onChange?.(syntheticEvent);
 
-      // Set cursor position after the last digit
-      const cursorPos = formatted.length;
-      input.setSelectionRange(cursorPos, cursorPos);
+      // Set cursor position after the last digit, accounting for separators
+      setTimeout(() => {
+        if (inputRef.current) {
+          let cursorPos = formatted.length;
+
+          // Adjust cursor position based on where we are in the format
+          if (digitCount <= 2) {
+            // After month, position after separator
+            cursorPos = digitCount + 1; // e.g., "1/" -> position 2, "12/" -> position 3
+          } else if (digitCount <= 4) {
+            // After day, position after separator
+            cursorPos = digitCount + 2; // Account for month separator + day separator
+          } else {
+            // In year section, position at end
+            cursorPos = formatted.length;
+          }
+
+          // Ensure cursor doesn't go beyond the formatted length
+          cursorPos = Math.min(cursorPos, formatted.length);
+          inputRef.current.setSelectionRange(cursorPos, cursorPos);
+        }
+      }, 0);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,7 +212,7 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
         )}
         <div className="relative">
           {/* Mask overlay - shows format structure with separators when empty */}
-          {isEmpty && !isFocused && (
+          {isEmpty && (
             <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-base md:text-sm select-none">
               <span className="text-gray-300">MM</span>
               <span className="text-gray-500">/</span>
@@ -226,6 +253,27 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
             onBlur={handleBlur}
             onInput={handleInput}
             onChange={handleChange}
+            onKeyDown={(e) => {
+              // Allow backspace, delete, arrow keys, tab, etc.
+              if (
+                e.key === "Backspace" ||
+                e.key === "Delete" ||
+                e.key.startsWith("Arrow") ||
+                e.key === "Tab" ||
+                e.key === "Enter" ||
+                (e.ctrlKey &&
+                  (e.key === "a" ||
+                    e.key === "c" ||
+                    e.key === "v" ||
+                    e.key === "x"))
+              ) {
+                return; // Allow these keys
+              }
+              // Prevent non-numeric keys
+              if (!/[0-9]/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
             {...props}
           />
         </div>

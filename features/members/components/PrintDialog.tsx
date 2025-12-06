@@ -111,18 +111,52 @@ export function PrintDialog({ isOpen, allMembers, onClose }: PrintDialogProps) {
 
       // Wait for dialog to close and PrintQRModal to mount, then trigger print
       // Use multiple delays to ensure DOM is fully updated and component is rendered
-      setTimeout(() => {
-        // Ensure PrintQRModal is in DOM
+      const triggerPrint = (attempts = 0) => {
         const printContent = document.getElementById("print-qr-content");
         if (printContent) {
-          window.print();
-        } else {
-          // If not ready, try again after a short delay
-          setTimeout(() => {
+          // Make sure it's in the DOM and has content
+          const hasContent = printContent.children.length > 0;
+          const hasSVG = printContent.querySelectorAll("svg").length > 0;
+
+          if (hasContent && hasSVG) {
+            // Force a reflow to ensure styles are applied
+            printContent.offsetHeight;
+            // Log for debugging
+            console.log("Print content ready, triggering print", {
+              children: printContent.children.length,
+              svgs: printContent.querySelectorAll("svg").length,
+            });
+            // Small delay to ensure styles are applied
+            setTimeout(() => {
+              window.print();
+            }, 200);
+          } else if (attempts < 30) {
+            // If no content yet, wait a bit more (max 30 attempts = 1.5 seconds)
+            setTimeout(() => triggerPrint(attempts + 1), 50);
+          } else {
+            console.error(
+              "PrintQRModal content not ready after multiple attempts",
+              {
+                hasContent,
+                hasSVG,
+                children: printContent.children.length,
+              }
+            );
+            // Try printing anyway
             window.print();
-          }, 200);
+          }
+        } else if (attempts < 30) {
+          // If element not found, try again (max 30 attempts = 1.5 seconds)
+          setTimeout(() => triggerPrint(attempts + 1), 50);
+        } else {
+          console.error(
+            "PrintQRModal element not found after multiple attempts"
+          );
         }
-      }, 300);
+      };
+
+      // Give React time to render the component and portal (longer delay for mobile)
+      setTimeout(() => triggerPrint(), 800);
 
       return () => {
         // Cleanup if component unmounts before print
@@ -345,8 +379,8 @@ export function PrintDialog({ isOpen, allMembers, onClose }: PrintDialogProps) {
         </DialogContent>
       </Dialog>
 
-      {/* PrintQRModal - render when printing or when we have members to print */}
-      {(isPrinting || membersToPrint.length > 0) && (
+      {/* PrintQRModal - always render when we have members to print */}
+      {membersToPrint.length > 0 && (
         <PrintQRModal membersToPrint={membersToPrint} />
       )}
     </>

@@ -190,6 +190,26 @@ export async function updateMember(
 }
 
 /**
+ * Get member by ID (UUID)
+ */
+export async function getMemberById(id: string): Promise<Member | null> {
+  const { data, error } = await supabase
+    .from("members")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null; // Not found
+    }
+    throw error;
+  }
+
+  return data as Member;
+}
+
+/**
  * Delete a member
  */
 export async function deleteMember(id: string): Promise<void> {

@@ -109,7 +109,7 @@ export function useMemberForm({
       city_municipality_name: member.city_municipality_name || "",
       barangay_code: member.barangay_code || "",
       barangay_name: member.barangay_name || "",
-      birthday: member.birthday.split("T")[0], // Convert to YYYY-MM-DD format
+      birthday: member.birthday ? member.birthday.split("T")[0] : "", // Convert to YYYY-MM-DD format
       gender: member.gender,
       membership_type: member.membership_type,
       classification: member.classification,

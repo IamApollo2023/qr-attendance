@@ -123,7 +123,11 @@ body {
 
 /* Print styles - hide everything except print content */
 @media print {
-  body > *:not([class*="print:"]) {
+  /* Don't hide print content elements - let component styles handle it */
+  body
+    > *:not([class*="print:"]):not(#print-qr-content):not(
+      #print-attendance-content
+    ) {
     display: none !important;
   }
   [class*="print:block"] {
@@ -133,6 +137,18 @@ body {
     top: 0;
     width: 100%;
     background: white;
+  }
+  /* Ensure print content elements override any hiding */
+  #print-qr-content,
+  #print-attendance-content {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    background: white !important;
+    z-index: 999999 !important;
   }
 }
 

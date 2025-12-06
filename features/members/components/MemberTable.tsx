@@ -33,7 +33,6 @@ interface MemberTableProps {
   onPageChange: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
   onSetOpenActionRowId: (id: string | null) => void;
-  onViewQR: (member: Member) => void;
   onEdit: (member: Member) => void;
   onDelete: (member: Member) => void;
 }
@@ -118,7 +117,6 @@ export function MemberTable({
   onPageChange,
   onPageSizeChange,
   onSetOpenActionRowId,
-  onViewQR,
   onEdit,
   onDelete,
 }: MemberTableProps) {
@@ -273,13 +271,6 @@ export function MemberTable({
                           openActionRowId === member.id ? null : member.id
                         )
                       }
-                      onViewQR={() => {
-                        window.open(
-                          `/attendee?id=${member.member_id}`,
-                          "_blank"
-                        );
-                        onSetOpenActionRowId(null);
-                      }}
                       onEdit={() => {
                         onEdit(member);
                         onSetOpenActionRowId(null);

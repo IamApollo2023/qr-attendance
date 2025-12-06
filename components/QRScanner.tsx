@@ -7,6 +7,7 @@ import { Camera, CameraOff, CheckCircle2, List, X } from "lucide-react";
 import { BrowserMultiFormatReader, NotFoundException } from "@zxing/library";
 import { supabase, signOut, type AttendanceRecord } from "@/lib";
 import { useToastContext } from "@/components/ToastProvider";
+import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 
 interface ScannedAttendee {
   attendee_id: string;
@@ -16,10 +17,15 @@ interface ScannedAttendee {
 
 interface QRScannerProps {
   eventId?: string;
+  eventName?: string;
   onScanSuccess?: (attendeeId: string) => void;
 }
 
-export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
+export default function QRScanner({
+  eventId,
+  eventName,
+  onScanSuccess,
+}: QRScannerProps) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -41,6 +47,13 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
   const [lastSync, setLastSync] = useState(() => new Date());
   const [isListOpen, setIsListOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [currentEventId, setCurrentEventId] = useState<string | undefined>(
+    eventId
+  );
+  const [currentEventName, setCurrentEventName] = useState<string | undefined>(
+    eventName
+  );
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   // Fetch scanned attendees from database
   const fetchScannedAttendees = useCallback(async () => {
@@ -57,7 +70,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
           )
         `
         )
-        .eq("event_id", eventId || "default")
+        .eq("event_id", currentEventId || "default")
         .order("scanned_at", { ascending: false })
         .limit(50);
 
@@ -77,7 +90,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
     } catch (err) {
       console.error("Failed to load existing records:", err);
     }
-  }, [eventId]);
+  }, [currentEventId]);
 
   // Auth is already verified by middleware - set authChecked immediately
   // This prevents redundant auth fetches
@@ -204,11 +217,92 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
     }
   };
 
-  // Load existing attendance records on mount and when eventId changes
+  // Fetch active event from database
+  const fetchActiveEvent = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("events")
+        .select("name, id")
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching active event:", error);
+        return null;
+      }
+
+      const newEventName = data?.name;
+      const oldEventName = currentEventName;
+
+      if (data) {
+        setCurrentEventId(data.name);
+        setCurrentEventName(data.name);
+      } else {
+        setCurrentEventId(undefined);
+        setCurrentEventName(undefined);
+      }
+
+      return { newEventName, oldEventName };
+    } catch (err) {
+      console.error("Failed to fetch active event:", err);
+      return null;
+    }
+  }, [currentEventName]);
+
+  // Set up realtime subscription for events table
+  useEffect(() => {
+    if (!authChecked) return;
+
+    const channel = supabase
+      .channel("events_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "events",
+        },
+        async (payload) => {
+          console.log("Event change detected:", payload);
+          // When any event's is_active changes, refetch the active event
+          const result = await fetchActiveEvent();
+          // Show notification if event changed
+          if (
+            result &&
+            result.oldEventName &&
+            result.oldEventName !== result.newEventName
+          ) {
+            info(
+              "Event Updated",
+              `Active event changed to: ${result.newEventName || "None"}`,
+              3000
+            );
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("Events subscription status:", status);
+      });
+
+    // Initial fetch
+    fetchActiveEvent();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authChecked, fetchActiveEvent, currentEventName, info]);
+
+  // Update current event when props change (initial load)
+  useEffect(() => {
+    setCurrentEventId(eventId);
+    setCurrentEventName(eventName);
+  }, [eventId, eventName]);
+
+  // Load existing attendance records on mount and when currentEventId changes
   useEffect(() => {
     if (!authChecked) return;
     fetchScannedAttendees();
-  }, [eventId, authChecked, fetchScannedAttendees]);
+  }, [currentEventId, authChecked, fetchScannedAttendees]);
 
   // Handle successful scan
   const handleScanSuccess = useCallback(
@@ -250,7 +344,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
           .from("qr_attendance")
           .select("*")
           .eq("attendee_id", attendeeId)
-          .eq("event_id", eventId || "default")
+          .eq("event_id", currentEventId || "default")
           .order("scanned_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -282,7 +376,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         const attendanceRecord: AttendanceRecord = {
           attendee_id: attendeeId,
           scanned_at: new Date().toISOString(),
-          event_id: eventId || "default",
+          event_id: currentEventId || "default",
         };
 
         // Add scanned_by and member_id if user is authenticated
@@ -337,7 +431,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
         setIsProcessing(false);
       }
     },
-    [eventId, onScanSuccess, fetchScannedAttendees]
+    [currentEventId, onScanSuccess, fetchScannedAttendees]
   );
 
   // Request camera permission
@@ -551,6 +645,14 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-50 overflow-hidden">
+      {/* Warning if no active event */}
+      {!currentEventId && (
+        <div className="bg-yellow-500 text-yellow-900 px-4 md:px-6 py-2 text-sm font-medium text-center">
+          ⚠️ No active event set. Please contact an admin to set an active
+          event.
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-[#1c2d44] via-[#274464] to-[#5b84ad] px-3 md:px-6 py-3 md:py-4 shadow-lg text-white flex-shrink-0 z-10">
         <div className="flex items-center justify-between gap-3">
@@ -597,14 +699,7 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
               <Camera className="w-4 h-4 md:w-5 md:h-5 text-white" />
             </button>
             <button
-              onClick={async () => {
-                try {
-                  await signOut();
-                  router.push("/");
-                } catch (error) {
-                  console.error("Sign out failed:", error);
-                }
-              }}
+              onClick={() => setShowLogoutDialog(true)}
               className="px-2.5 md:px-4 py-1.5 md:py-2 rounded-full bg-white text-[#1c2d44] text-xs md:text-sm font-semibold shadow-sm hover:shadow transition-shadow"
             >
               Sign Out
@@ -617,8 +712,10 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
             Ready for next scan
           </span>
           <span className="inline-flex items-center gap-1">
-            Event ID:
-            <strong className="tracking-wide">{eventId ?? "default"}</strong>
+            Event:
+            <strong className="tracking-wide">
+              {currentEventName || currentEventId || "No active event"}
+            </strong>
           </span>
           <span className="hidden sm:inline-flex items-center gap-1">
             Last sync:
@@ -763,6 +860,25 @@ export default function QRScanner({ eventId, onScanSuccess }: QRScannerProps) {
           </div>
         </button>
       )}
+
+      {/* Logout Confirmation Dialog */}
+      <LogoutConfirmDialog
+        open={showLogoutDialog}
+        onOpenChange={setShowLogoutDialog}
+        onConfirm={async () => {
+          try {
+            await signOut();
+            router.push("/");
+          } catch (error) {
+            console.error("Sign out failed:", error);
+            showError(
+              "Sign Out Failed",
+              "An error occurred while signing out. Please try again.",
+              4000
+            );
+          }
+        }}
+      />
     </div>
   );
 }

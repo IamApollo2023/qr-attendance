@@ -14,11 +14,15 @@ import { exportAttendanceToCSV } from "@/features/attendance/utils/csvExport";
 interface AttendanceManagementProps {
   records: AttendanceRecord[];
   eventId: string;
+  eventName?: string;
+  eventDescription?: string;
 }
 
 export function AttendanceManagement({
   records,
   eventId,
+  eventName,
+  eventDescription,
 }: AttendanceManagementProps) {
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
@@ -36,11 +40,13 @@ export function AttendanceManagement({
           <div className="flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
             <div>
               <h1 className="text-lg md:text-3xl font-semibold tracking-tight">
-                Attendance
+                {eventName || "Attendance"}
               </h1>
-              <p className="text-xs md:text-base text-muted-foreground">
-                View attendance records organized by age group and gender.
-              </p>
+              {eventDescription && (
+                <p className="text-xs md:text-base text-muted-foreground">
+                  {eventDescription}
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
