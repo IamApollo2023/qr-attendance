@@ -155,11 +155,14 @@ export function MemberTable({
         className="overflow-x-auto overflow-y-hidden flex-1 min-h-0 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-400"
         style={{ scrollbarWidth: "thin", scrollbarColor: "#cbd5e1 #f1f5f9" }}
       >
-        <table style={{ tableLayout: "auto", minWidth: "100%" }}>
+        <table
+          className="w-full min-w-full"
+          style={{ tableLayout: "auto", width: "100%" }}
+        >
           <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
             <tr>
               <th
-                className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs cursor-pointer select-none"
+                className="px-4 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs cursor-pointer select-none"
                 onClick={() => onSort("member_id")}
               >
                 <span className="inline-flex items-center gap-0.5 md:gap-1">
@@ -173,7 +176,7 @@ export function MemberTable({
                 </span>
               </th>
               <th
-                className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs cursor-pointer select-none"
+                className="px-4 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs cursor-pointer select-none"
                 onClick={() => onSort("first_name")}
               >
                 <span className="inline-flex items-center gap-0.5 md:gap-1">
@@ -187,7 +190,7 @@ export function MemberTable({
                 </span>
               </th>
               <th
-                className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs cursor-pointer select-none"
+                className="px-4 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs cursor-pointer select-none"
                 onClick={() => onSort("last_name")}
               >
                 <span className="inline-flex items-center gap-0.5 md:gap-1">
@@ -201,7 +204,7 @@ export function MemberTable({
                 </span>
               </th>
               <th
-                className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs mobile:hidden cursor-pointer select-none"
+                className="px-4 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs mobile:hidden cursor-pointer select-none"
                 onClick={() => onSort("address")}
               >
                 <span className="inline-flex items-center gap-0.5 md:gap-1">
@@ -216,7 +219,7 @@ export function MemberTable({
               </th>
               {!hideAgeGroup && (
                 <th
-                  className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs mobile:hidden cursor-pointer select-none"
+                  className="px-4 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs mobile:hidden cursor-pointer select-none"
                   onClick={() => onSort("age_category")}
                 >
                   <span className="inline-flex items-center gap-0.5 md:gap-1">
@@ -230,7 +233,7 @@ export function MemberTable({
                   </span>
                 </th>
               )}
-              <th className="px-3 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs">
+              <th className="px-4 py-2 md:px-4 md:py-3 text-left text-gray-700 font-semibold text-[10px] md:text-xs">
                 Actions
               </th>
             </tr>
@@ -251,17 +254,17 @@ export function MemberTable({
                   <td className="px-4 py-3 text-gray-700 text-xs md:text-sm whitespace-nowrap">
                     {member.last_name}
                   </td>
-                  <td className="px-3 py-2 md:px-4 md:py-3 text-gray-600 text-[10px] md:text-xs max-w-xs truncate mobile:hidden whitespace-nowrap">
+                  <td className="px-4 py-2 md:px-4 md:py-3 text-gray-600 text-[10px] md:text-xs max-w-xs truncate mobile:hidden whitespace-nowrap">
                     {formatAddress(member)}
                   </td>
                   {!hideAgeGroup && (
-                    <td className="px-3 py-2 md:px-4 md:py-3 mobile:hidden whitespace-nowrap">
+                    <td className="px-4 py-2 md:px-4 md:py-3 mobile:hidden whitespace-nowrap">
                       <span className="px-1.5 md:px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] md:text-xs font-medium">
                         {member.age_category}
                       </span>
                     </td>
                   )}
-                  <td className="px-3 py-2 md:px-4 md:py-3 whitespace-nowrap relative">
+                  <td className="px-4 py-2 md:px-4 md:py-3 whitespace-nowrap relative">
                     <MemberRowActions
                       member={member}
                       isOpen={openActionRowId === member.id}

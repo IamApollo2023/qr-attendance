@@ -123,7 +123,8 @@ export function MemberLocationFields({
           required
           value={formData.province_code}
           onChange={(e) => handleProvinceChange(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-3 text-base min-h-[44px] border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 md:py-2 md:text-sm"
+          style={{ fontSize: "16px" }}
         >
           <option value="">
             {loadingProvinces ? "Loading provinces…" : "Select province"}
@@ -144,7 +145,8 @@ export function MemberLocationFields({
           disabled={!formData.province_code || loadingCities}
           value={formData.city_municipality_code}
           onChange={(e) => handleCityChange(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+          className="w-full px-3 py-3 text-base min-h-[44px] border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-400 md:py-2 md:text-sm"
+          style={{ fontSize: "16px" }}
         >
           <option value="">
             {!formData.province_code
@@ -169,7 +171,8 @@ export function MemberLocationFields({
           disabled={!formData.city_municipality_code || loadingBarangays}
           value={formData.barangay_code}
           onChange={(e) => handleBarangayChange(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+          className="w-full px-3 py-3 text-base min-h-[44px] border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-400 md:py-2 md:text-sm"
+          style={{ fontSize: "16px" }}
         >
           <option value="">
             {!formData.city_municipality_code

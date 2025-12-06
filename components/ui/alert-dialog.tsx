@@ -34,9 +34,9 @@ export function AlertDialog({ alert, onClose }: AlertDialogProps) {
   if (!alert) return null;
 
   const buttonColors = {
-    warning: "bg-yellow-600 hover:bg-yellow-700",
-    error: "bg-red-600 hover:bg-red-700",
-    info: "bg-blue-600 hover:bg-blue-700",
+    warning: "bg-orange-600 hover:bg-orange-700 active:bg-orange-800",
+    error: "bg-red-600 hover:bg-red-700 active:bg-red-800",
+    info: "bg-blue-600 hover:bg-blue-700 active:bg-blue-800",
   };
 
   const handleConfirm = () => {
@@ -53,6 +53,7 @@ export function AlertDialog({ alert, onClose }: AlertDialogProps) {
     <dialog
       ref={dialogRef}
       className="fixed inset-0 z-50 p-0 m-0 bg-transparent outline-none"
+      style={{ pointerEvents: "auto" }}
     >
       <div
         className="fixed inset-0 flex items-center justify-center p-4 backdrop-blur-sm"
@@ -61,10 +62,12 @@ export function AlertDialog({ alert, onClose }: AlertDialogProps) {
             handleCancel();
           }
         }}
+        style={{ pointerEvents: "auto" }}
       >
         <div
-          className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95"
+          className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 relative z-10"
           onClick={(e) => e.stopPropagation()}
+          style={{ pointerEvents: "auto" }}
         >
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -79,20 +82,24 @@ export function AlertDialog({ alert, onClose }: AlertDialogProps) {
                 dangerouslySetInnerHTML={{ __html: alert.html }}
               />
             )}
-            <div className="flex gap-3 justify-end mt-6">
+            <div className="flex gap-3 justify-end mt-6 relative z-20">
               {alert.cancelText && (
                 <button
                   onClick={handleCancel}
-                  className="px-4 md:px-6 py-2 md:py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors text-xs md:text-sm"
+                  type="button"
+                  className="px-4 py-3 min-h-[44px] bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 rounded-lg font-medium transition-colors text-base md:text-sm md:py-2 md:min-h-0 relative z-30"
+                  style={{ touchAction: "manipulation", pointerEvents: "auto" }}
                 >
                   {alert.cancelText}
                 </button>
               )}
               <button
                 onClick={handleConfirm}
-                className={`px-4 md:px-6 py-2 md:py-2.5 text-white rounded-lg font-medium transition-colors text-xs md:text-sm ${
+                type="button"
+                className={`px-4 py-3 min-h-[44px] text-white rounded-lg font-medium transition-colors text-base md:text-sm md:py-2 md:min-h-0 relative z-30 ${
                   buttonColors[alert.type || "warning"]
                 }`}
+                style={{ touchAction: "manipulation", pointerEvents: "auto" }}
               >
                 {alert.confirmText || "OK"}
               </button>

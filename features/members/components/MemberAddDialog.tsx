@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 
 interface MemberAddDialogProps {
   isOpen: boolean;
@@ -75,7 +76,8 @@ export function MemberAddDialog({
               required
               value={formData.first_name}
               onChange={(e) => onFormDataChange("first_name", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-3 text-base min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 md:py-2 md:text-sm"
+              style={{ fontSize: "16px" }}
             />
           </div>
           <div>
@@ -86,7 +88,8 @@ export function MemberAddDialog({
               type="text"
               value={formData.middle_name}
               onChange={(e) => onFormDataChange("middle_name", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-3 text-base min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 md:py-2 md:text-sm"
+              style={{ fontSize: "16px" }}
             />
           </div>
           <div>
@@ -98,7 +101,8 @@ export function MemberAddDialog({
               required
               value={formData.last_name}
               onChange={(e) => onFormDataChange("last_name", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-3 text-base min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 md:py-2 md:text-sm"
+              style={{ fontSize: "16px" }}
             />
           </div>
           <MemberLocationFields
@@ -106,18 +110,12 @@ export function MemberAddDialog({
             onFormDataChange={onFormDataChange}
           />
           <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Birthday *
-              </label>
-              <input
-                type="date"
-                required
-                value={formData.birthday}
-                onChange={(e) => onFormDataChange("birthday", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+            <DateInput
+              label="Birthday *"
+              required
+              value={formData.birthday}
+              onChange={(e) => onFormDataChange("birthday", e.target.value)}
+            />
             <div>
               <span className="block text-xs font-medium text-gray-700 mb-1">
                 Gender *
@@ -170,7 +168,8 @@ export function MemberAddDialog({
                     e.target.value as MemberFormData["membership_type"]
                   )
                 }
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="w-full px-3 py-3 text-base min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white md:py-2 md:text-sm"
+                style={{ fontSize: "16px" }}
               >
                 <option value="WSAM-LGAM">WSAM-LGAM</option>
                 <option value="LGAM">LGAM</option>
@@ -192,7 +191,8 @@ export function MemberAddDialog({
                       : undefined
                   )
                 }
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="w-full px-3 py-3 text-base min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white md:py-2 md:text-sm"
+                style={{ fontSize: "16px" }}
               >
                 <option value="">None</option>
                 <option value="MEMBER">MEMBER</option>

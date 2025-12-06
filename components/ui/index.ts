@@ -4,6 +4,7 @@ export { AlertDialog, type AlertType, type AlertOptions } from "./alert-dialog";
 export { Button, buttonVariants, type ButtonProps } from "./button";
 
 export { Input } from "./input";
+export { DateInput, type DateInputProps } from "./date-input";
 export { SearchInput } from "./search-input";
 export { FilterSelect, type FilterSelectOption } from "./filter-select";
 

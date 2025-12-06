@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden"
             style={{ overscrollBehaviorX: "none" }}
           >
-            <div className="mx-auto w-full max-w-6xl pr-4 lg:pr-6 py-4 md:py-6">
+            <div className="mx-auto w-full max-w-6xl lg:pr-6 py-4 md:py-6">
               <div className="@container/main flex flex-1 flex-col gap-4 md:gap-6">
                 {children}
               </div>
