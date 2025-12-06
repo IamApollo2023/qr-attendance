@@ -330,11 +330,18 @@ export default function MembersManagement({
         cancelText: "No, keep editing",
       });
 
-      if (!confirmed) {
-        return; // User chose to keep editing
+      // Explicitly check - if user chose to keep editing, do nothing
+      if (confirmed === false) {
+        return; // User chose "No, keep editing" - stay in the form
+      }
+
+      // Only proceed if user explicitly confirmed (confirmed === true)
+      if (confirmed !== true) {
+        return; // Safety check - if promise didn't resolve properly, don't close
       }
     }
 
+    // Only close if user confirmed or there are no unsaved changes
     handleCancel();
     setIsFormOpen(false);
   }, [hasUnsavedChanges, showAlert, handleCancel]);
@@ -349,11 +356,18 @@ export default function MembersManagement({
         cancelText: "No, keep editing",
       });
 
-      if (!confirmed) {
-        return; // User chose to keep editing - don't close
+      // Explicitly check - if user chose to keep editing, do nothing
+      if (confirmed === false) {
+        return; // User chose "No, keep editing" - stay in the form
+      }
+
+      // Only proceed if user explicitly confirmed (confirmed === true)
+      if (confirmed !== true) {
+        return; // Safety check - if promise didn't resolve properly, don't close
       }
     }
 
+    // Only close if user confirmed or there are no unsaved changes
     handleCancel();
     setIsAddDialogOpen(false);
   }, [hasUnsavedChanges, showAlert, handleCancel]);
@@ -379,7 +393,7 @@ export default function MembersManagement({
             >
               <UserPlus className="h-3 w-3 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Add member</span>
-              <span className="sm:hidden">Add</span>
+              <span className="sm:hidden">Add Member</span>
             </Button>
             <Button
               size="sm"

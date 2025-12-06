@@ -446,18 +446,18 @@ export function GeoMap() {
     <div className="space-y-4">
       <WeatherWidget />
       <div className="grid h-full gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <Card className="flex min-h-[360px] md:min-h-[520px] lg:min-h-[600px] flex-1 flex-col overflow-hidden">
+        <Card className="flex min-h-[360px] md:min-h-[520px] lg:min-h-[600px] flex-1 flex-col overflow-hidden relative z-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm md:text-base">
               Members per barangay (Luna, La Union)
             </CardTitle>
           </CardHeader>
-          <CardContent className="h-full p-0">
+          <CardContent className="h-full p-0 relative z-0">
             <MapContainer
               center={LUNA_CENTER}
               zoom={DEFAULT_ZOOM}
               scrollWheelZoom={false}
-              className="h-[320px] w-full md:h-[520px] lg:h-[600px]"
+              className="h-[320px] w-full md:h-[520px] lg:h-[600px] relative z-0"
               bounds={LUNA_BOUNDS}
               maxBounds={LUNA_MAX_BOUNDS}
               maxBoundsViscosity={1}

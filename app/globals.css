@@ -92,6 +92,33 @@ body {
     opacity: 0 !important;
     pointer-events: none !important;
   }
+
+  /* Ensure Leaflet map stays below sidebar (z-50) and other overlays */
+  /* Leaflet uses high z-index values (400-600), we need to cap them */
+  .leaflet-container {
+    z-index: 10 !important;
+  }
+
+  .leaflet-pane,
+  .leaflet-map-pane,
+  .leaflet-tile-pane,
+  .leaflet-overlay-pane,
+  .leaflet-shadow-pane,
+  .leaflet-marker-pane,
+  .leaflet-tooltip-pane,
+  .leaflet-popup-pane {
+    z-index: 10 !important;
+  }
+
+  .leaflet-control-container,
+  .leaflet-control {
+    z-index: 20 !important;
+  }
+
+  /* Ensure map container itself doesn't overlay sidebar */
+  .leaflet-container.leaflet-touch {
+    z-index: 10 !important;
+  }
 }
 
 /* Print styles - hide everything except print content */

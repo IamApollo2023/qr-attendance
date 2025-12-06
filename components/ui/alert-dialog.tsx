@@ -39,14 +39,26 @@ export function AlertDialog({ alert, onClose }: AlertDialogProps) {
     info: "bg-blue-600 hover:bg-blue-700 active:bg-blue-800",
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    // Call onConfirm first (this resolves the promise)
     alert.onConfirm?.();
-    onClose();
+    // Use Promise.resolve to ensure promise resolves before closing
+    Promise.resolve().then(() => {
+      onClose();
+    });
   };
 
-  const handleCancel = () => {
+  const handleCancel = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    // Call onCancel first (this resolves the promise with false)
     alert.onCancel?.();
-    onClose();
+    // Use Promise.resolve to ensure promise resolves before closing
+    Promise.resolve().then(() => {
+      onClose();
+    });
   };
 
   return (
@@ -59,7 +71,8 @@ export function AlertDialog({ alert, onClose }: AlertDialogProps) {
         className="fixed inset-0 flex items-center justify-center p-4 backdrop-blur-sm"
         onClick={(e) => {
           if (e.target === e.currentTarget) {
-            handleCancel();
+            e.stopPropagation();
+            handleCancel(e);
           }
         }}
         style={{ pointerEvents: "auto" }}
