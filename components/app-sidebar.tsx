@@ -5,12 +5,10 @@ import Image from "next/image";
 import {
   ClipboardListIcon,
   MapIcon,
-  HelpCircleIcon,
   LayoutDashboardIcon,
-  SearchIcon,
-  SettingsIcon,
   UsersIcon,
   CalendarIcon,
+  FileText,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -43,6 +41,11 @@ const data = {
       title: "Attendance",
       url: "/admin/attendance",
       icon: ClipboardListIcon,
+    },
+    {
+      title: "Report",
+      url: "/admin/report",
+      icon: FileText,
     },
     {
       title: "Activities",
@@ -81,23 +84,7 @@ const data = {
       icon: MapIcon,
     },
   ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "/admin/settings",
-      icon: SettingsIcon,
-    },
-    {
-      title: "Help & Support",
-      url: "/admin/help",
-      icon: HelpCircleIcon,
-    },
-    {
-      title: "Search",
-      url: "/admin/search",
-      icon: SearchIcon,
-    },
-  ],
+  navSecondary: [],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

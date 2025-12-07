@@ -29,6 +29,24 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/admin/attendance")) {
     return "Attendance";
   }
+  if (pathname.startsWith("/admin/report")) {
+    // Check if it's a detail page (e.g., /admin/report/all, /admin/report/men)
+    const reportMatch = pathname.match(/^\/admin\/report\/([^/]+)$/);
+    if (reportMatch) {
+      const ageGroup = reportMatch[1];
+      const ageGroupNames: Record<string, string> = {
+        all: "All",
+        men: "Men",
+        women: "Women",
+        yan: "YAN",
+        kkb: "KKB",
+        kids: "Kids",
+      };
+      const ageGroupName = ageGroupNames[ageGroup] || ageGroup;
+      return `Report - ${ageGroupName}`;
+    }
+    return "Report";
+  }
   if (pathname.startsWith("/admin/activities/life-group")) {
     return "Life Group";
   }

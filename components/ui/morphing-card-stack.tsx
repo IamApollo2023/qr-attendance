@@ -194,51 +194,75 @@ export function Component({
                   }}
                 >
                   <div className="flex h-full flex-col">
-                    <div className="mb-3">
-                      <h3 className="font-semibold text-card-foreground truncate">
-                        {card.title}
-                      </h3>
-                      {card.imageUrl && (
-                        <p
-                          className={cn(
-                            "text-sm text-muted-foreground mt-1",
-                            layout === "stack" && "line-clamp-1",
-                            layout === "grid" && "line-clamp-1",
-                            layout === "list" && "line-clamp-1"
-                          )}
-                        >
-                          {card.description}
-                        </p>
-                      )}
-                    </div>
                     {card.imageUrl ? (
-                      <div className="flex-1 overflow-hidden rounded-lg cursor-default">
-                        <img
-                          src={card.imageUrl}
-                          alt={card.title}
-                          className="h-full w-full object-cover cursor-default"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex flex-1 items-start gap-3">
-                        {card.icon && (
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-foreground">
-                            {card.icon}
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
+                      <>
+                        <div className="mb-3">
+                          <h3 className="font-semibold text-card-foreground truncate">
+                            {card.title}
+                          </h3>
                           <p
                             className={cn(
                               "text-sm text-muted-foreground mt-1",
-                              layout === "stack" && "line-clamp-3",
-                              layout === "grid" && "line-clamp-2",
+                              layout === "stack" && "line-clamp-1",
+                              layout === "grid" && "line-clamp-1",
                               layout === "list" && "line-clamp-1"
                             )}
                           >
                             {card.description}
                           </p>
                         </div>
+                        <div className="flex-1 overflow-hidden rounded-lg cursor-default">
+                          <img
+                            src={card.imageUrl}
+                            alt={card.title}
+                            className="h-full w-full object-cover cursor-default"
+                          />
+                        </div>
+                      </>
+                    ) : !card.icon && !card.description ? (
+                      // Center the title when there's no icon and no description
+                      <div className="flex flex-1 items-center justify-center">
+                        <h3
+                          className={cn(
+                            "font-semibold text-card-foreground text-center",
+                            layout === "stack" &&
+                              "text-4xl md:text-5xl lg:text-6xl",
+                            layout === "grid" && "text-xl md:text-2xl",
+                            layout === "list" && "text-lg md:text-xl"
+                          )}
+                        >
+                          {card.title}
+                        </h3>
                       </div>
+                    ) : (
+                      <>
+                        <div className="mb-3">
+                          <h3 className="font-semibold text-card-foreground truncate">
+                            {card.title}
+                          </h3>
+                        </div>
+                        <div className="flex flex-1 items-start gap-3">
+                          {card.icon && (
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-foreground">
+                              {card.icon}
+                            </div>
+                          )}
+                          {card.description && (
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={cn(
+                                  "text-sm text-muted-foreground mt-1",
+                                  layout === "stack" && "line-clamp-3",
+                                  layout === "grid" && "line-clamp-2",
+                                  layout === "list" && "line-clamp-1"
+                                )}
+                              >
+                                {card.description}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
                 </motion.div>

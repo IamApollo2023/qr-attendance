@@ -89,3 +89,5 @@ LEFT JOIN user_profiles up ON u.id = up.id
 WHERE u.email = 'scanner@test.com';
 
 
+
+
