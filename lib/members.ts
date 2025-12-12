@@ -68,10 +68,12 @@ export async function createMember(input: CreateMemberInput): Promise<Member> {
     .toUpperCase() as ClassificationType | undefined;
   if (
     normalizedClassification &&
-    !["MEMBER", "WORKER", "PASTOR"].includes(normalizedClassification)
+    !["MEMBER", "WORKER", "PASTOR", "ATTENDEE"].includes(
+      normalizedClassification
+    )
   ) {
     throw new Error(
-      `Invalid classification: ${input.classification}. Must be one of: MEMBER, WORKER, PASTOR`
+      `Invalid classification: ${input.classification}. Must be one of: MEMBER, WORKER, PASTOR, ATTENDEE`
     );
   }
 
@@ -164,9 +166,9 @@ export async function updateMember(
   // Normalize classification if provided
   if (updateData.classification) {
     const normalized = updateData.classification.trim().toUpperCase();
-    if (!["MEMBER", "WORKER", "PASTOR"].includes(normalized)) {
+    if (!["MEMBER", "WORKER", "PASTOR", "ATTENDEE"].includes(normalized)) {
       throw new Error(
-        `Invalid classification: ${updateData.classification}. Must be one of: MEMBER, WORKER, PASTOR`
+        `Invalid classification: ${updateData.classification}. Must be one of: MEMBER, WORKER, PASTOR, ATTENDEE`
       );
     }
     updateData.classification = normalized;

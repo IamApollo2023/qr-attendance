@@ -172,6 +172,7 @@ export function MemberForm({
               <option value="MEMBER">MEMBER</option>
               <option value="WORKER">WORKER</option>
               <option value="PASTOR">PASTOR</option>
+              <option value="ATTENDEE">ATTENDEE</option>
             </select>
           </div>
         </div>

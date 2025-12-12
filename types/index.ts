@@ -30,7 +30,7 @@ export interface AttendanceRecord {
 // Member Types
 export type MembershipType = "WSAM-LGAM" | "LGAM" | "WSAM" | "Attendee";
 
-export type ClassificationType = "MEMBER" | "WORKER" | "PASTOR";
+export type ClassificationType = "MEMBER" | "WORKER" | "PASTOR" | "ATTENDEE";
 
 export interface Member {
   id: string;
