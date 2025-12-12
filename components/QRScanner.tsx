@@ -42,7 +42,8 @@ export default function QRScanner({
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const processedCodesRef = useRef<Set<string>>(new Set());
+  // Track processed codes per event to allow scanning same member in different events
+  const processedCodesRef = useRef<Map<string, Set<string>>>(new Map());
   const { success, error: showError, warning, info } = useToastContext();
   const [lastSync, setLastSync] = useState(() => new Date());
   const [isListOpen, setIsListOpen] = useState(false);
@@ -313,6 +314,13 @@ export default function QRScanner({
     setCurrentEventName(eventName);
   }, [eventId, eventName]);
 
+  // Clear processed codes cache when event changes to allow scanning same member in new event
+  useEffect(() => {
+    // Clear all processed codes when event changes
+    // This ensures members can be scanned into sequential events
+    processedCodesRef.current.clear();
+  }, [currentEventId]);
+
   // Get gradient classes based on event name
   const getEventGradient = (eventName?: string): string => {
     switch (eventName) {
@@ -338,14 +346,31 @@ export default function QRScanner({
   // Handle successful scan
   const handleScanSuccess = useCallback(
     async (attendeeId: string) => {
-      // Prevent duplicate scans within 2 seconds
-      if (processedCodesRef.current.has(attendeeId)) {
+      const eventKey = currentEventId || "default";
+
+      // Prevent duplicate scans within 2 seconds for the SAME event
+      // This allows scanning the same member in different events
+      const eventProcessedCodes =
+        processedCodesRef.current.get(eventKey) || new Set();
+      if (eventProcessedCodes.has(attendeeId)) {
         return;
       }
 
-      processedCodesRef.current.add(attendeeId);
+      // Track this scan for this specific event
+      if (!processedCodesRef.current.has(eventKey)) {
+        processedCodesRef.current.set(eventKey, new Set());
+      }
+      processedCodesRef.current.get(eventKey)!.add(attendeeId);
+
       setTimeout(() => {
-        processedCodesRef.current.delete(attendeeId);
+        const codes = processedCodesRef.current.get(eventKey);
+        if (codes) {
+          codes.delete(attendeeId);
+          // Clean up empty sets to prevent memory leak
+          if (codes.size === 0) {
+            processedCodesRef.current.delete(eventKey);
+          }
+        }
       }, 2000);
 
       setIsProcessing(true);
@@ -370,12 +395,13 @@ export default function QRScanner({
           return;
         }
 
-        // Check for duplicate in database
+        // Check for duplicate in database - MUST be event-specific
+        // This ensures a member can be scanned into multiple different events
         const { data: existing, error: queryError } = await supabase
           .from("qr_attendance")
           .select("*")
           .eq("attendee_id", attendeeId)
-          .eq("event_id", currentEventId || "default")
+          .eq("event_id", eventKey)
           .order("scanned_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -385,11 +411,11 @@ export default function QRScanner({
         }
 
         if (existing) {
-          // Duplicate scan - show warning
+          // Duplicate scan for THIS event - show warning
           playErrorSound();
           warning(
             "Already Scanned",
-            `${member.first_name} ${member.last_name} (${attendeeId}) was already scanned at ${new Date(
+            `${member.first_name} ${member.last_name} (${attendeeId}) was already scanned for this event at ${new Date(
               existing.scanned_at
             ).toLocaleTimeString()}`,
             3000
@@ -407,7 +433,7 @@ export default function QRScanner({
         const attendanceRecord: AttendanceRecord = {
           attendee_id: attendeeId,
           scanned_at: new Date().toISOString(),
-          event_id: currentEventId || "default",
+          event_id: eventKey,
         };
 
         // Add scanned_by and member_id if user is authenticated
@@ -462,7 +488,16 @@ export default function QRScanner({
         setIsProcessing(false);
       }
     },
-    [currentEventId, onScanSuccess, fetchScannedAttendees]
+    [
+      currentEventId,
+      onScanSuccess,
+      fetchScannedAttendees,
+      showError,
+      warning,
+      success,
+      playErrorSound,
+      playSuccessSound,
+    ]
   );
 
   // Request camera permission
