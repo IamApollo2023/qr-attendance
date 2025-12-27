@@ -328,9 +328,6 @@ export function PrintDialog({ isOpen, allMembers, onClose }: PrintDialogProps) {
                                 <span className="font-mono font-semibold text-xs md:text-sm text-gray-900">
                                   {member.member_id}
                                 </span>
-                                <span className="px-1.5 md:px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] md:text-xs font-medium">
-                                  {member.age_category}
-                                </span>
                               </div>
                               <p className="text-sm md:text-base font-medium text-gray-900">
                                 {member.first_name} {member.middle_name}{" "}

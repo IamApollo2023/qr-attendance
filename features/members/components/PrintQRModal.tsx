@@ -195,7 +195,6 @@ export function PrintQRModal({ membersToPrint }: PrintQRModalProps) {
               <p className="print-name">
                 {member.first_name} {member.last_name}
               </p>
-              <p className="print-age">{member.age_category}</p>
               <p className="print-id">{member.member_id}</p>
             </div>
           </div>

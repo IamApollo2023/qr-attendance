@@ -10,6 +10,15 @@ body {
   overscroll-behavior-x: none;
 }
 
+@font-face {
+  font-family: "RCLVeluxaSerif";
+  src: url("/font/RCLVeluxaSerif-Regular-BF694e48e357953.otf")
+    format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     /* Brand primary: #5b84ad -> hsl(210 33% 51%) */
@@ -69,6 +78,80 @@ body {
 
   .scanner-line {
     animation: scanner-line 1.8s linear infinite;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .page-enter {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .header-enter {
+    animation: fadeInUp 0.8s ease-out 0.2s forwards;
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+
+  .title-jesus-enter {
+    animation: fadeInUp 0.6s ease-out 0s forwards;
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+
+  .title-luna-enter {
+    animation: fadeInUp 0.6s ease-out 0.4s forwards;
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+
+  .card-enter {
+    animation: fadeInUp 0.6s ease-out forwards;
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+
+  .card-enter:nth-child(1) {
+    animation-delay: 0.8s;
+  }
+
+  .card-enter:nth-child(2) {
+    animation-delay: 0.9s;
+  }
+
+  .card-enter:nth-child(3) {
+    animation-delay: 1s;
+  }
+
+  .card-enter:nth-child(4) {
+    animation-delay: 1.1s;
+  }
+
+  .neumorphism {
+    background: rgba(15, 15, 35, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
   /* Hide any Leaflet pin markers completely; geo map uses polygon coloring only. */

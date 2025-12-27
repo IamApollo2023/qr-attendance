@@ -4,28 +4,48 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { navigationCards } from "@/lib/constants";
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    // Use requestAnimationFrame to ensure DOM is ready before triggering animation
+    const timer = requestAnimationFrame(() => {
+      setIsMounted(true);
+    });
+    return () => cancelAnimationFrame(timer);
+  }, []);
+
   return (
     <main
       className={cn(
         "min-h-screen",
-        "bg-gradient-to-b from-[#edf4ff] via-[#f5f7fb] to-[#f9fafb]",
         "flex flex-col",
         "items-start md:items-center",
         "justify-center",
         "pt-[53px] md:pt-0",
         "pb-[53px]",
         "px-4",
-        "relative"
+        "relative",
+        isMounted ? "page-enter" : "opacity-0"
       )}
+      style={{
+        background: `radial-gradient(circle at 20% 20%, rgba(0, 245, 160, 0.7) 0%, transparent 55%),
+    radial-gradient(circle at 50% 40%, rgba(0, 217, 255, 0.8) 0%, transparent 60%),
+    radial-gradient(circle at 80% 60%, rgba(185, 103, 255, 0.6) 0%, transparent 50%),
+    radial-gradient(circle at 40% 70%, rgba(5, 255, 161, 0.5) 0%, transparent 45%),
+    #0f0f23`,
+      }}
     >
       <div className={cn("w-full", "max-w-6xl", "flex-1", "flex flex-col")}>
         <div
           className={cn("flex", "items-center justify-between", "mb-4 md:mb-6")}
         >
           <div className="flex-1" />
-          <div className={cn("flex-1", "text-center")}>
+          <div
+            className={cn("flex-1", "text-center", isMounted && "header-enter")}
+          >
             {/* Logo */}
             <div className={cn("flex justify-center", "mb-2 md:mb-4")}>
               <div
@@ -60,30 +80,36 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <h1 className={cn("font-semibold", "mb-1", "text-slate-900")}>
+            <h1 className={cn("font-semibold", "mb-1", "text-white")}>
               <div
-                className={cn("text-4xl md:text-5xl", "whitespace-nowrap")}
+                className={cn(
+                  "text-2xl md:text-5xl",
+                  "whitespace-nowrap",
+                  isMounted && "title-jesus-enter"
+                )}
                 style={{
-                  fontFamily: "-apple-system",
+                  fontFamily: '"RCLVeluxaSerif", serif',
                   backgroundImage:
-                    "linear-gradient(180deg, rgba(15, 23, 42, 1) 67%, rgba(255, 255, 255, 0.38) 100%)",
+                    "linear-gradient(180deg, rgba(255, 255, 255, 1) 67%, rgba(200, 200, 255, 0.8) 100%)",
                   backgroundClip: "text",
                   WebkitBackgroundClip: "text",
                   color: "transparent",
+                  paddingTop: "9px",
+                  paddingBottom: "9px",
                 }}
               >
                 Jesus is Lord
               </div>
               <div
                 className={cn(
-                  "text-lg md:text-4xl",
+                  "text-base md:text-4xl",
                   "font-light",
-                  "whitespace-nowrap"
+                  "whitespace-nowrap",
+                  "text-white",
+                  isMounted && "title-luna-enter"
                 )}
                 style={{
-                  fontFamily:
-                    '"Inter", -apple-system, BlinkMacSystemFont, sans-serif',
-                  fontSize: "25px",
+                  fontFamily: '"RCLVeluxaSerif", serif',
                 }}
               >
                 Luna La Union
@@ -102,23 +128,17 @@ export default function Home() {
             "mt-8 md:mt-0"
           )}
         >
-          {navigationCards.map((card) => (
+          {navigationCards.map((card, index) => (
             <Link key={card.href} href={card.href} className="h-full">
               <div
                 className={cn(
-                  "rounded-2xl",
+                  "neumorphism",
                   "p-4 md:p-8",
-                  "shadow-xl",
-                  "transition-all",
                   "cursor-pointer",
-                  "group",
                   "h-full",
                   "min-h-[140px] md:min-h-0",
                   "flex flex-col",
-                  "bg-white",
-                  "border border-slate-200",
-                  "hover:border-emerald-300/80",
-                  "hover:shadow-lg"
+                  isMounted && "card-enter"
                 )}
               >
                 <div
@@ -137,10 +157,7 @@ export default function Home() {
                       height={96}
                       className={cn(
                         "w-24 h-24 md:w-20 md:h-20",
-                        "object-contain",
-                        "opacity-70",
-                        "group-hover:opacity-100",
-                        "transition-opacity"
+                        "object-contain"
                       )}
                     />
                   </div>
@@ -149,7 +166,7 @@ export default function Home() {
                       "text-sm md:text-2xl",
                       "font-semibold",
                       "mb-1 md:mb-2",
-                      "text-slate-900"
+                      "text-white"
                     )}
                     style={{
                       fontFamily: "Poppins, sans-serif",
@@ -166,9 +183,9 @@ export default function Home() {
       <footer
         className={cn("w-full", "text-center", "mt-auto", "py-4 md:py-6")}
       >
-        <p className={cn("text-xs md:text-sm", "text-slate-600")}>
+        <p className={cn("text-xs md:text-sm", "text-gray-300")}>
           Developed and maintained by{" "}
-          <span className={cn("font-semibold", "text-slate-700")}>
+          <span className={cn("font-semibold", "text-white")}>
             Paolo P. Espero
           </span>
         </p>
