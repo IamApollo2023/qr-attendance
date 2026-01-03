@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib";
 import { memberRepository } from "@/lib/repositories/memberRepository";
@@ -9,6 +9,10 @@ interface UseMembersProps {
   initialMembers: Member[];
   initialPagination: PaginationInfo | null;
   onError?: (error: string) => void;
+  dateFilters?: {
+    dateAddedFrom?: string;
+    dateAddedTo?: string;
+  };
 }
 
 /**
@@ -18,12 +22,18 @@ export function useMembers({
   initialMembers,
   initialPagination,
   onError,
+  dateFilters,
 }: UseMembersProps) {
   const searchParams = useSearchParams();
-  const currentPageFromUrl = parseInt(searchParams.get("page") || "1", 10);
-  const currentPageSizeFromUrl = parseInt(
-    searchParams.get("pageSize") || "20",
-    10
+
+  // Memoize URL params to prevent unnecessary rerenders
+  const currentPageFromUrl = useMemo(
+    () => parseInt(searchParams.get("page") || "1", 10),
+    [searchParams]
+  );
+  const currentPageSizeFromUrl = useMemo(
+    () => parseInt(searchParams.get("pageSize") || "20", 10),
+    [searchParams]
   );
 
   const [members, setMembers] = useState<Member[]>(initialMembers);
@@ -37,7 +47,12 @@ export function useMembers({
     async (page: number = 1, pageSize: number = 20) => {
       setLoading(true);
       try {
-        const result = await memberRepository.getPaginated({ page, pageSize });
+        const result = await memberRepository.getPaginated({
+          page,
+          pageSize,
+          dateAddedFrom: dateFilters?.dateAddedFrom,
+          dateAddedTo: dateFilters?.dateAddedTo,
+        });
         setMembers(result.members);
         setPagination(result.pagination);
       } catch (error) {
@@ -49,7 +64,7 @@ export function useMembers({
         setLoading(false);
       }
     },
-    [onError]
+    [onError, dateFilters]
   );
 
   // Sync state with URL params - only fetch if URL changed (not on initial mount)
@@ -60,15 +75,13 @@ export function useMembers({
       return;
     }
 
-    const pageFromUrl = parseInt(searchParams.get("page") || "1", 10);
-    const pageSizeFromUrl = parseInt(searchParams.get("pageSize") || "20", 10);
     const currentPage = pagination?.page || 1;
     const currentPageSize = pagination?.pageSize || 20;
 
-    if (pageFromUrl !== currentPage || pageSizeFromUrl !== currentPageSize) {
-      loadMembers(pageFromUrl, pageSizeFromUrl);
+    if (currentPageFromUrl !== currentPage || currentPageSizeFromUrl !== currentPageSize) {
+      loadMembers(currentPageFromUrl, currentPageSizeFromUrl);
     }
-  }, [searchParams]);
+  }, [currentPageFromUrl, currentPageSizeFromUrl, pagination?.page, pagination?.pageSize, loadMembers]);
 
   // Set up real-time subscription
   useEffect(() => {

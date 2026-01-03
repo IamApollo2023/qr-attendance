@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -19,7 +19,7 @@ import {
 type NavItem = {
   title: string;
   url: string | null;
-  icon?: LucideIcon;
+  icon?: ComponentType<{ className?: string; fontSize?: "small" | "medium" | "large" | "inherit" }>;
   items?: { title: string; url: string }[];
 };
 
@@ -53,8 +53,10 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     disabled
                     className="cursor-default"
                   >
-                    {item.icon && <item.icon />}
-                    <span>{item.title}</span>
+                    {item.icon && (
+                      <item.icon className="h-6 w-6 shrink-0" fontSize="medium" />
+                    )}
+                    <span className="text-base">{item.title}</span>
                   </SidebarMenuButton>
                   <SidebarMenuSub>
                     {item.items.map((subItem) => {
@@ -94,13 +96,17 @@ export function NavMain({ items }: { items: NavItem[] }) {
                 >
                   {item.url ? (
                     <Link href={item.url} onClick={handleLinkClick}>
-                      {item.icon && <item.icon />}
-                      <span>{item.title}</span>
+                      {item.icon && (
+                        <item.icon className="h-6 w-6 shrink-0" fontSize="medium" />
+                      )}
+                      <span className="text-base">{item.title}</span>
                     </Link>
                   ) : (
                     <div>
-                      {item.icon && <item.icon />}
-                      <span>{item.title}</span>
+                      {item.icon && (
+                        <item.icon className="h-6 w-6 shrink-0" fontSize="medium" />
+                      )}
+                      <span className="text-base">{item.title}</span>
                     </div>
                   )}
                 </SidebarMenuButton>

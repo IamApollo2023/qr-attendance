@@ -20,7 +20,7 @@ export default function Home() {
   return (
     <main
       className={cn(
-        "min-h-screen",
+        "min-h-[100dvh]",
         "flex flex-col",
         "items-start md:items-center",
         "justify-center",

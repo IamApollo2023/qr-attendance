@@ -13,7 +13,7 @@ interface FinanceLayoutProps {
 export default function FinanceLayout({ children }: FinanceLayoutProps) {
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full overflow-hidden">
+      <div className="flex h-[100dvh] w-full overflow-hidden">
         <FinanceSidebar variant="inset" />
         <SidebarInset className="flex flex-1 flex-col min-h-0">
           <SiteHeader />

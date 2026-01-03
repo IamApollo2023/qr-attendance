@@ -12,12 +12,10 @@ export default async function AdminPage({
 
   // Auth is already checked by middleware, so we can trust the user is authenticated
   // Fetch initial data server-side with pagination
-  const { records, stats, error, pagination } = await getAttendanceData(
-    eventId,
-    page
-  );
+  const result = await getAttendanceData(eventId, page);
 
-  if (error) {
+  // Check if result is an error type
+  if ("error" in result && result.error) {
     // If there's an error, still render but with empty data
     // The client component will handle real-time updates
     return (
@@ -32,12 +30,19 @@ export default async function AdminPage({
     );
   }
 
+  // Type guard: result is GetAttendanceDataResult
+  const data = result as {
+    records: any[];
+    stats: { total: number; today: number; unique: number };
+    pagination: any;
+  };
+
   return (
     <AdminDashboard
       initialData={{
-        records: records || [],
-        stats: stats || { total: 0, today: 0, unique: 0 },
-        pagination: pagination || null,
+        records: data.records || [],
+        stats: data.stats || { total: 0, today: 0, unique: 0 },
+        pagination: data.pagination || null,
       }}
       eventId={eventId}
     />

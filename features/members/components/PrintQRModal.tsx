@@ -51,7 +51,7 @@ export function PrintQRModal({ membersToPrint }: PrintQRModalProps) {
           left: 0 !important;
           top: 0 !important;
           width: 100% !important;
-          min-height: 100vh !important;
+          min-height: 100dvh !important;
           background: white !important;
           padding: 2rem !important;
           opacity: 1 !important;

@@ -264,6 +264,8 @@ export function useCSVImport({
           }
 
           // Lookup barangay if we have name but not code
+          // Note: If barangay is not found, we still import the member but without barangay info
+          // This allows members from outside Luna municipality to be imported
           if (!finalBarangayCode && barangayName && finalCityCode) {
             const cacheKey = `${finalCityCode}:${barangayName.toUpperCase()}`;
             if (!barangayCache.has(cacheKey)) {
@@ -278,16 +280,20 @@ export function useCSVImport({
               finalBarangayCode = barangay.code;
               finalBarangayName = barangay.name;
             } else {
+              // Barangay not found - log warning but continue import
+              // This allows members from outside Luna to be imported
               lookupErrors.push(
-                `Row ${i + 1}: Barangay "${barangayName}" not found in city/municipality`
+                `Row ${i + 1}: Barangay "${barangayName}" not found in city/municipality - imported without barangay info (will not appear on geo map)`
               );
-              continue;
+              // Set barangay to undefined - member will be imported but won't appear on geo map
+              finalBarangayCode = undefined;
+              finalBarangayName = undefined;
             }
           }
 
-          // Validate we have all location codes
-          if (!finalProvinceCode || !finalCityCode || !finalBarangayCode) {
-            lookupErrors.push(`Row ${i + 1}: Missing location information`);
+          // Validate we have province and city codes (barangay is optional)
+          if (!finalProvinceCode || !finalCityCode) {
+            lookupErrors.push(`Row ${i + 1}: Missing required location information (province or city)`);
             continue;
           }
 
@@ -299,7 +305,8 @@ export function useCSVImport({
             province_name: finalProvinceName || undefined,
             city_municipality_code: finalCityCode,
             city_municipality_name: finalCityName || undefined,
-            barangay_code: finalBarangayCode,
+            // Barangay is optional - if not found, member is still imported
+            barangay_code: finalBarangayCode || undefined,
             barangay_name: finalBarangayName || undefined,
             birthday: birthday,
             gender: normalizedGender as "male" | "female",

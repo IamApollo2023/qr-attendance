@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import type { Member } from "@/types";
 import {
   Dialog,
@@ -19,11 +25,20 @@ type DialogMode = "initial" | "print-all" | "print-specific";
 
 interface PrintDialogProps {
   isOpen: boolean;
-  allMembers: Member[];
+  allMembers: Member[]; // Current paginated members (for display count)
+  dateFilters?: {
+    dateAddedFrom?: string;
+    dateAddedTo?: string;
+  };
   onClose: () => void;
 }
 
-export function PrintDialog({ isOpen, allMembers, onClose }: PrintDialogProps) {
+export function PrintDialog({
+  isOpen,
+  allMembers,
+  dateFilters,
+  onClose,
+}: PrintDialogProps) {
   const [mode, setMode] = useState<DialogMode>("initial");
   const [searchInput, setSearchInput] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
@@ -32,31 +47,67 @@ export function PrintDialog({ isOpen, allMembers, onClose }: PrintDialogProps) {
   const [membersToPrint, setMembersToPrint] = useState<Member[]>([]);
   const [shouldTriggerPrint, setShouldTriggerPrint] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isLoadingAllMembers, setIsLoadingAllMembers] = useState(false);
+  const [allMembersForPrint, setAllMembersForPrint] = useState<Member[]>([]);
   const printTriggeredRef = useRef(false);
 
-  // Filter members based on search input
+  // Fetch all members for printing (respecting date filters)
+  const fetchAllMembersForPrint = useCallback(async () => {
+    setIsLoadingAllMembers(true);
+    try {
+      const { memberRepository } =
+        await import("@/lib/repositories/memberRepository");
+      const allMembersData = await memberRepository.getAll({
+        dateAddedFrom: dateFilters?.dateAddedFrom,
+        dateAddedTo: dateFilters?.dateAddedTo,
+      });
+      setAllMembersForPrint(allMembersData);
+      return allMembersData;
+    } catch (error) {
+      console.error("Failed to fetch all members for printing:", error);
+      return [];
+    } finally {
+      setIsLoadingAllMembers(false);
+    }
+  }, [dateFilters]);
+
+  // Load all members when dialog opens in print-specific mode
+  useEffect(() => {
+    if (
+      isOpen &&
+      mode === "print-specific" &&
+      allMembersForPrint.length === 0
+    ) {
+      fetchAllMembersForPrint();
+    }
+  }, [isOpen, mode, allMembersForPrint.length, fetchAllMembersForPrint]);
+
+  // Filter members based on search input (use allMembersForPrint when available)
+  const searchableMembers =
+    allMembersForPrint.length > 0 ? allMembersForPrint : allMembers;
   const filteredMembers = useMemo(() => {
     if (!searchInput.trim()) {
       return [];
     }
     const searchLower = searchInput.toLowerCase();
-    return allMembers.filter((member) => {
+    return searchableMembers.filter((member) => {
       const searchTarget =
         `${member.first_name} ${member.middle_name || ""} ${member.last_name} ${member.member_id} ${member.barangay_name || ""} ${member.city_municipality_name || ""}`.toLowerCase();
       return searchTarget.includes(searchLower);
     });
-  }, [allMembers, searchInput]);
+  }, [searchableMembers, searchInput]);
 
   // Get selected members
   const selectedMembers = useMemo(() => {
-    return allMembers.filter((member) =>
+    return searchableMembers.filter((member) =>
       selectedMemberIds.has(member.member_id)
     );
-  }, [allMembers, selectedMemberIds]);
+  }, [searchableMembers, selectedMemberIds]);
 
   // Handle print all
-  const handlePrintAll = () => {
-    setMembersToPrint(allMembers);
+  const handlePrintAll = async () => {
+    const allMembersData = await fetchAllMembersForPrint();
+    setMembersToPrint(allMembersData);
     setShouldTriggerPrint(true);
   };
 
@@ -213,6 +264,7 @@ export function PrintDialog({ isOpen, allMembers, onClose }: PrintDialogProps) {
       setShouldTriggerPrint(false);
       printTriggeredRef.current = false;
       setIsPrinting(false);
+      setAllMembersForPrint([]); // Reset cached members
     }
   }, [isOpen, isPrinting]);
 
@@ -230,7 +282,7 @@ export function PrintDialog({ isOpen, allMembers, onClose }: PrintDialogProps) {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[80dvh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Print QR Codes</DialogTitle>
             <DialogDescription>
@@ -243,9 +295,16 @@ export function PrintDialog({ isOpen, allMembers, onClose }: PrintDialogProps) {
 
           {mode === "initial" && (
             <div className="flex flex-col gap-3 mt-4">
-              <Button onClick={handlePrintAll} className="w-full" size="lg">
+              <Button
+                onClick={handlePrintAll}
+                className="w-full"
+                size="lg"
+                disabled={isLoadingAllMembers}
+              >
                 <Printer className="h-4 w-4" />
-                Print All ({allMembers.length} members)
+                {isLoadingAllMembers
+                  ? "Loading..."
+                  : `Print All${dateFilters?.dateAddedFrom || dateFilters?.dateAddedTo ? " (Filtered)" : ""}`}
               </Button>
               <Button
                 onClick={() => setMode("print-specific")}

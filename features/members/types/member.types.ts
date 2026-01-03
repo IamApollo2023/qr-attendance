@@ -15,6 +15,8 @@ export interface MemberFilters {
   ageCategory: "all" | "Children" | "KKB" | "YAN" | "Men" | "Women";
   membershipType: "all" | MembershipType;
   classification?: "all" | ClassificationType;
+  dateAddedFrom?: string; // ISO date string (YYYY-MM-DD)
+  dateAddedTo?: string; // ISO date string (YYYY-MM-DD)
 }
 
 export type SortKey =

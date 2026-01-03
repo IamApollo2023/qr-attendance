@@ -1,24 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { supabase, type AttendanceRecord } from "@/lib";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardMetricsGrid } from "@/components/dashboard/DashboardMetricsGrid";
+import { AgeCategoryCard } from "@/components/dashboard/AgeCategoryCard";
+import {
+  useAttendanceAnalytics,
+  useDashboardMetrics,
+  useAgeCategoryBreakdown,
+} from "@/features/attendance/hooks";
 
 interface PaginationInfo {
   page: number;
@@ -48,253 +42,66 @@ export default function AdminDashboard({
 }: AdminDashboardProps) {
   const searchParams = useSearchParams();
 
+  // Extract URL params once - memoize to prevent unnecessary rerenders
+  const pageParam = searchParams.get("page");
+  const eventParam = searchParams.get("event_id");
+
   // URL is the single source of truth for pagination
-  const currentPage = parseInt(searchParams.get("page") || "1", 10);
-  const urlEventId = searchParams.get("event_id") || eventId;
+  const currentPage = parseInt(pageParam || "1", 10);
+  const urlEventId = eventParam || eventId;
 
   // Initialize state from server data (no redundant fetch on mount)
-  const [attendees, setAttendees] = useState<AttendanceRecord[]>(
-    initialData.records
-  );
-  const [pagination, setPagination] = useState<PaginationInfo | null>(
-    initialData.pagination
-  );
   const [eventFilter, setEventFilter] = useState<string>(urlEventId);
-  const [isLoading, setIsLoading] = useState(false);
-  const [totalMembers, setTotalMembers] = useState(0);
-  const [totalActiveMembers, setTotalActiveMembers] = useState(0);
-  const [totalVisitors, setTotalVisitors] = useState(0);
-  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
   const [selectedAgeCategory, setSelectedAgeCategory] = useState<string>("Men");
   const isInitialMount = useRef(true);
+  const previousPageRef = useRef<number>(currentPage);
+  const previousEventRef = useRef<string>(urlEventId);
 
-  // Auth is already verified by middleware - no need for redundant client-side check
-  // This was causing duplicate fetches. Trust the server.
+  // Use custom hooks for data fetching
+  const { attendees, pagination, isLoading, fetchPaginatedData } =
+    useAttendanceAnalytics();
 
-  // Format date consistently (prevents hydration mismatch)
-  const formatDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }, []);
+  const {
+    metrics,
+    isLoading: isAnalyticsLoading,
+    loadMetrics,
+  } = useDashboardMetrics();
 
-  // Format time consistently (prevents hydration mismatch)
-  const formatTime = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    const seconds = String(date.getSeconds()).padStart(2, "0");
-    return `${hours}:${minutes}:${seconds}`;
-  }, []);
-
-  // Fetch paginated data - only called when URL changes or user actions
-  const fetchPaginatedData = useCallback(
-    async (page: number, eventId: string) => {
-      setIsLoading(true);
-      try {
-        const pageSize = 25;
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize - 1;
-
-        // Get total count
-        const { count: totalCount } = await supabase
-          .from("qr_attendance")
-          .select("*", { count: "exact", head: true })
-          .eq("event_id", eventId);
-
-        // Get today's count
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
-
-        const { count: todayCount } = await supabase
-          .from("qr_attendance")
-          .select("*", { count: "exact", head: true })
-          .eq("event_id", eventId)
-          .gte("scanned_at", todayStart.toISOString())
-          .lte("scanned_at", todayEnd.toISOString());
-
-        // Get unique count
-        const { data: uniqueData } = await supabase
-          .from("qr_attendance")
-          .select("attendee_id", { count: "exact", head: false })
-          .eq("event_id", eventId);
-
-        const unique = new Set((uniqueData || []).map((r) => r.attendee_id))
-          .size;
-
-        // Fetch paginated records with limited fields
-        const { data: records, error } = await supabase
-          .from("qr_attendance")
-          .select(
-            `
-          id,
-          attendee_id,
-          scanned_at,
-          event_id,
-          member:members (
-            first_name,
-            last_name,
-            age_category,
-            gender
-          )
-        `
-          )
-          .eq("event_id", eventId)
-          .order("scanned_at", { ascending: false })
-          .range(from, to);
-
-        if (error) throw error;
-
-        if (records) {
-          // Normalize Supabase join shape: ensure `member` is a single object, not an array
-          const attendanceRecords = (records as any[]).map((row) => ({
-            ...row,
-            member: Array.isArray(row.member) ? row.member[0] : row.member,
-          })) as AttendanceRecord[];
-
-          setAttendees(attendanceRecords);
-
-          const totalPages = Math.ceil((totalCount || 0) / pageSize);
-          setPagination({
-            page,
-            pageSize,
-            total: totalCount || 0,
-            totalPages,
-            hasNextPage: page < totalPages,
-            hasPrevPage: page > 1,
-          });
-        }
-      } catch (error) {
-        console.error("Failed to fetch attendees:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
-
-  const ageBreakdown = useMemo(() => {
-    const counts: Record<string, number> = {
-      Men: 0,
-      Women: 0,
-      YAN: 0,
-      KKB: 0,
-      Children: 0,
-      Unknown: 0,
-    };
-
-    attendees.forEach((record) => {
-      const age = record.member?.age_category ?? "Unknown";
-      if (counts[age] !== undefined) {
-        counts[age] += 1;
-      } else {
-        counts.Unknown += 1;
-      }
-    });
-
-    return counts;
-  }, [attendees]);
-
-  const loadAnalytics = useCallback(async (currentEventId: string) => {
-    try {
-      setIsAnalyticsLoading(true);
-
-      // Total members
-      const { count: memberCount, error: memberError } = await supabase
-        .from("members")
-        .select("*", { count: "exact", head: true });
-      if (memberError) {
-        console.error("Failed to load members count:", memberError);
-      }
-      setTotalMembers(memberCount || 0);
-
-      // Active members and visitors in the last 30 days for this event
-      const since = new Date();
-      since.setDate(since.getDate() - 30);
-
-      const { data: attendanceData, error: attendanceError } = await supabase
-        .from("qr_attendance")
-        .select(
-          `
-          attendee_id,
-          scanned_at,
-          member:members (
-            member_id
-          )
-        `
-        )
-        .eq("event_id", currentEventId)
-        .gte("scanned_at", since.toISOString());
-
-      if (attendanceError) {
-        console.error("Failed to load attendance analytics:", attendanceError);
-        return;
-      }
-
-      const countsByMember = new Map<string, number>();
-      const visitorIds = new Set<string>();
-
-      (attendanceData || []).forEach((row: any) => {
-        const id = row.attendee_id as string;
-        if (!id) return;
-
-        countsByMember.set(id, (countsByMember.get(id) || 0) + 1);
-
-        // If there is no joined member record, treat as visitor.
-        if (
-          !row.member ||
-          (Array.isArray(row.member) && row.member.length === 0)
-        ) {
-          visitorIds.add(id);
-        }
-      });
-
-      let activeCount = 0;
-      countsByMember.forEach((count) => {
-        if (count >= 3) activeCount += 1;
-      });
-
-      setTotalActiveMembers(activeCount);
-      setTotalVisitors(visitorIds.size);
-    } finally {
-      setIsAnalyticsLoading(false);
-    }
-  }, []);
+  const { ageCategoryBreakdown, fetchAgeCategoryBreakdown } =
+    useAgeCategoryBreakdown();
 
   // Sync state with URL params - only fetch if URL changed (not on initial mount)
   useEffect(() => {
     // Skip on initial mount - use server-provided initialData
     if (isInitialMount.current) {
       isInitialMount.current = false;
+      previousPageRef.current = currentPage;
+      previousEventRef.current = urlEventId;
+      setEventFilter(urlEventId);
       return;
     }
 
-    const pageFromUrl = parseInt(searchParams.get("page") || "1", 10);
-    const eventFromUrl = searchParams.get("event_id") || eventId;
-
-    // Only fetch if URL params differ from current state (user navigated)
-    const pageChanged = pageFromUrl !== (pagination?.page || 1);
-    const eventChanged = eventFromUrl !== eventFilter;
+    // Only fetch if URL params actually changed
+    const pageChanged = currentPage !== previousPageRef.current;
+    const eventChanged = urlEventId !== previousEventRef.current;
 
     if (pageChanged || eventChanged) {
-      setEventFilter(eventFromUrl);
-      fetchPaginatedData(pageFromUrl, eventFromUrl);
-      loadAnalytics(eventFromUrl);
+      previousPageRef.current = currentPage;
+      previousEventRef.current = urlEventId;
+      setEventFilter(urlEventId);
+      fetchPaginatedData(currentPage, urlEventId);
+      loadMetrics(urlEventId);
+      fetchAgeCategoryBreakdown(urlEventId);
     }
   }, [
-    searchParams,
-    pagination,
-    eventFilter,
-    eventId,
+    currentPage,
+    urlEventId,
     fetchPaginatedData,
-    loadAnalytics,
+    loadMetrics,
+    fetchAgeCategoryBreakdown,
   ]);
 
-  // Set up real-time subscription
+  // Set up real-time subscription - only recreate when eventFilter changes
   useEffect(() => {
     const channel = supabase
       .channel("qr_attendance_changes")
@@ -309,7 +116,11 @@ export default function AdminDashboard({
         async (payload) => {
           console.log("Real-time update received:", payload);
           // Refetch current page to ensure consistency
-          await fetchPaginatedData(currentPage, eventFilter);
+          const currentPageNum = pagination?.page || currentPage;
+          await fetchPaginatedData(currentPageNum, eventFilter);
+          // Refresh metrics and age category breakdown
+          await loadMetrics(eventFilter);
+          await fetchAgeCategoryBreakdown(eventFilter);
         }
       )
       .subscribe((status) => {
@@ -319,97 +130,34 @@ export default function AdminDashboard({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventFilter, currentPage, fetchPaginatedData]);
-
-  // Initial analytics load
-  useEffect(() => {
-    loadAnalytics(eventFilter);
-  }, [eventFilter, loadAnalytics]);
+  }, [
+    eventFilter,
+    pagination?.page,
+    currentPage,
+    fetchPaginatedData,
+    loadMetrics,
+    fetchAgeCategoryBreakdown,
+  ]);
 
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-3 py-3 md:gap-6 md:py-6">
           {/* Header */}
-          <div className="px-4 lg:px-6">
-            <div className="flex flex-col gap-1">
-              <h1 className="text-lg md:text-3xl font-semibold tracking-tight">
-                Attendance analytics
-              </h1>
-              <p className="text-xs md:text-base text-muted-foreground">
-                High-level overview of QR attendance trends.
-              </p>
-            </div>
-          </div>
+          <DashboardHeader />
 
           {/* High-level membership KPIs */}
-          <div className="grid grid-cols-2 gap-3 md:gap-4 px-4 lg:px-6">
-            <Card className="@container/card">
-              <CardHeader className="relative">
-                <CardDescription className="text-xs md:text-sm">
-                  Total members
-                </CardDescription>
-                <CardTitle className="text-lg md:text-3xl font-semibold tabular-nums">
-                  {isAnalyticsLoading ? "…" : totalMembers}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="@container/card">
-              <CardHeader className="relative">
-                <CardDescription className="text-xs md:text-sm">
-                  Active members <br /> (last 30 days)
-                </CardDescription>
-                <CardTitle className="text-lg md:text-3xl font-semibold tabular-nums">
-                  {isAnalyticsLoading ? "…" : totalActiveMembers}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="@container/card col-span-2">
-              <CardHeader className="relative">
-                <CardDescription className="text-xs md:text-sm">
-                  Visitors (last 30 days)
-                </CardDescription>
-                <CardTitle className="text-lg md:text-3xl font-semibold tabular-nums">
-                  {isAnalyticsLoading ? "…" : totalVisitors}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
+          <DashboardMetricsGrid
+            metrics={metrics}
+            isLoading={isAnalyticsLoading}
+          />
 
           {/* Age-group analytics */}
-          <div className="px-4 lg:px-6">
-            <Card className="@container/card">
-              <CardHeader className="relative">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <CardDescription className="text-xs md:text-sm">
-                      Age Category
-                    </CardDescription>
-                    <CardTitle className="text-lg md:text-3xl font-semibold tabular-nums">
-                      {ageBreakdown[
-                        selectedAgeCategory as keyof typeof ageBreakdown
-                      ] ?? 0}
-                    </CardTitle>
-                  </div>
-                  <Select
-                    value={selectedAgeCategory}
-                    onValueChange={setSelectedAgeCategory}
-                  >
-                    <SelectTrigger className="w-[120px] md:w-[140px] text-xs md:text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Men">Men</SelectItem>
-                      <SelectItem value="Women">Women</SelectItem>
-                      <SelectItem value="YAN">YAN</SelectItem>
-                      <SelectItem value="KKB">KKB</SelectItem>
-                      <SelectItem value="Children">Kids</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-            </Card>
-          </div>
+          <AgeCategoryCard
+            ageCategoryBreakdown={ageCategoryBreakdown}
+            selectedAgeCategory={selectedAgeCategory}
+            onAgeCategoryChange={setSelectedAgeCategory}
+          />
 
           {/* Analytics chart */}
           <div className="px-4 lg:px-6">

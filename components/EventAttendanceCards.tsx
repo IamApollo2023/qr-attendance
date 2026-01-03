@@ -36,6 +36,26 @@ export function EventAttendanceCards({
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
   const { success, error: showError } = useToastContext();
 
+  // Refetch events to get updated is_active status
+  const refetchEvents = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error refetching events:", error);
+        return;
+      }
+
+      // Note: We can't update events state directly since it's initialized from props
+      // But we can update activeEventId which controls the isActive prop
+    } catch (err) {
+      console.error("Failed to refetch events:", err);
+    }
+  }, []);
+
   // Refetch active event from database
   const refetchActiveEvent = useCallback(async () => {
     try {
@@ -72,7 +92,26 @@ export function EventAttendanceCards({
             "Event change detected in EventAttendanceCards:",
             payload
           );
-          // Refetch active event when any event's is_active changes
+
+          // Immediately update activeEventId based on payload if it's an is_active change
+          const newData = payload.new as { id?: string; is_active?: boolean };
+          const oldData = payload.old as { id?: string; is_active?: boolean };
+
+          if (oldData?.is_active !== newData?.is_active) {
+            // If an event was activated, set it as active
+            if (newData?.is_active === true && newData?.id) {
+              setActiveEventId(newData.id);
+            }
+            // If an event was deactivated and it was the current active one, clear it
+            else if (
+              newData?.is_active === false &&
+              newData?.id === activeEventId
+            ) {
+              setActiveEventId(undefined);
+            }
+          }
+
+          // Also refetch to ensure consistency
           await refetchActiveEvent();
         }
       )
@@ -86,7 +125,7 @@ export function EventAttendanceCards({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetchActiveEvent]);
+  }, [refetchActiveEvent, activeEventId]);
 
   const handleSetActive = async (eventId: string) => {
     if (loadingEventId) return;
@@ -192,8 +231,9 @@ export function EventAttendanceCards({
   const handleDeactivateConfirm = async () => {
     if (loadingEventId || !activeEventId) return;
 
+    const deactivatingEventId = activeEventId; // Store the ID we're deactivating
     setShowDeactivateDialog(false);
-    setLoadingEventId(activeEventId);
+    setLoadingEventId(deactivatingEventId);
     try {
       // Deactivate all events (Supabase requires a WHERE clause)
       const { error: deactivateError } = await supabase
@@ -202,6 +242,10 @@ export function EventAttendanceCards({
         .eq("is_active", true);
 
       if (deactivateError) throw deactivateError;
+
+      // Immediately update state to reflect deactivation
+      // This ensures UI updates immediately before real-time subscription fires
+      setActiveEventId(undefined);
 
       // Verify no active event exists in database
       const { data: activeEvent, error: fetchError } = await supabase
@@ -214,8 +258,10 @@ export function EventAttendanceCards({
         console.error("Error verifying deactivation:", fetchError);
       }
 
-      // Update state based on actual database state
+      // Double-check: if somehow an event is still active, update state
+      // Otherwise, keep it as undefined (no active event)
       setActiveEventId(activeEvent?.id || undefined);
+
       success("Event Deactivated", "All events have been deactivated.", 2000);
     } catch (err: any) {
       console.error("Error deactivating event:", err);
@@ -225,6 +271,7 @@ export function EventAttendanceCards({
         4000
       );
     } finally {
+      // Always clear loading state after operation completes
       setLoadingEventId(null);
     }
   };

@@ -4,7 +4,7 @@ import { getActiveEvent } from "@/lib/events";
 // Code-split heavy QRScanner component - only loads when needed
 const QRScanner = dynamic(() => import("@/components/QRScanner"), {
   loading: () => (
-    <div className="flex flex-col h-screen bg-gray-50 items-center justify-center">
+    <div className="flex flex-col h-[100dvh] bg-gray-50 items-center justify-center">
       <div className="text-gray-600">Loading scanner...</div>
     </div>
   ),

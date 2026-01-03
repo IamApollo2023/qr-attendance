@@ -3,13 +3,14 @@
 import * as React from "react";
 import Image from "next/image";
 import {
-  ClipboardListIcon,
-  MapIcon,
-  LayoutDashboardIcon,
-  UsersIcon,
-  CalendarIcon,
-  FileText,
-} from "lucide-react";
+  DashboardOutlined,
+  PeopleOutlined,
+  ChecklistOutlined,
+  DescriptionOutlined,
+  CalendarTodayOutlined,
+  MapOutlined,
+  HelpOutline,
+} from "@mui/icons-material";
 
 import { NavMain } from "@/components/nav-main";
 import { NavSecondary } from "@/components/nav-secondary";
@@ -30,27 +31,27 @@ const data = {
     {
       title: "Dashboard",
       url: "/admin",
-      icon: LayoutDashboardIcon,
+      icon: DashboardOutlined,
     },
     {
       title: "Members",
       url: "/admin/members",
-      icon: UsersIcon,
+      icon: PeopleOutlined,
     },
     {
       title: "Attendance",
       url: "/admin/attendance",
-      icon: ClipboardListIcon,
+      icon: ChecklistOutlined,
     },
     {
       title: "Report",
       url: "/admin/report",
-      icon: FileText,
+      icon: DescriptionOutlined,
     },
     {
       title: "Activities",
       url: null, // Group title, not clickable
-      icon: CalendarIcon,
+      icon: CalendarTodayOutlined,
       items: [
         {
           title: "Life Group",
@@ -81,7 +82,12 @@ const data = {
     {
       title: "Geo Map",
       url: "/admin/geo",
-      icon: MapIcon,
+      icon: MapOutlined,
+    },
+    {
+      title: "Help & Tutorials",
+      url: "/admin/help",
+      icon: HelpOutline,
     },
   ],
   navSecondary: [],

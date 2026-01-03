@@ -8,12 +8,7 @@ import { BrowserMultiFormatReader, NotFoundException } from "@zxing/library";
 import { supabase, signOut, type AttendanceRecord } from "@/lib";
 import { useToastContext } from "@/components/ToastProvider";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
-
-interface ScannedAttendee {
-  attendee_id: string;
-  scanned_at: string;
-  name?: string;
-}
+import { useScannedAttendees } from "@/features/scanner/hooks";
 
 interface QRScannerProps {
   eventId?: string;
@@ -30,9 +25,6 @@ export default function QRScanner({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [scannedAttendees, setScannedAttendees] = useState<ScannedAttendee[]>(
-    []
-  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [facingMode, setFacingMode] = useState<"environment" | "user">(
     "environment"
@@ -54,44 +46,24 @@ export default function QRScanner({
   const [currentEventName, setCurrentEventName] = useState<string | undefined>(
     eventName
   );
+  const [eventActivatedAt, setEventActivatedAt] = useState<string | undefined>(
+    undefined
+  );
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  // Fetch scanned attendees from database
-  const fetchScannedAttendees = useCallback(async () => {
-    try {
-      const { data: records, error } = await supabase
-        .from("qr_attendance")
-        .select(
-          `
-          attendee_id,
-          scanned_at,
-          member:members (
-            first_name,
-            last_name
-          )
-        `
-        )
-        .eq("event_id", currentEventId || "default")
-        .order("scanned_at", { ascending: false })
-        .limit(50);
+  // Use the hook to manage scanned attendees - ensures only current event data is shown
+  // Pass activation timestamp to only show records scanned after event activation
+  const {
+    scannedAttendees,
+    totalScannedCount,
+    fetchScannedAttendees,
+  } = useScannedAttendees(currentEventId, eventActivatedAt);
 
-      if (error) throw error;
-
-      const attendees: ScannedAttendee[] = (records || []).map(
-        (record: any) => ({
-          attendee_id: record.attendee_id,
-          scanned_at: record.scanned_at,
-          name:
-            record.member && record.member.first_name && record.member.last_name
-              ? `${record.member.first_name} ${record.member.last_name}`
-              : record.attendee_id,
-        })
-      );
-      setScannedAttendees(attendees);
-    } catch (err) {
-      console.error("Failed to load existing records:", err);
-    }
-  }, [currentEventId]);
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/39a2ccae-d45f-4181-af1c-1cb7d7f33d6d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QRScanner.tsx:56',message:'QRScanner currentEventId changed',data:{currentEventId,currentEventName,scannedAttendeesCount:scannedAttendees.length,totalScannedCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  }, [currentEventId, currentEventName, scannedAttendees.length, totalScannedCount]);
+  // #endregion
 
   // Auth is already verified by middleware - set authChecked immediately
   // This prevents redundant auth fetches
@@ -123,12 +95,13 @@ export default function QRScanner({
     const interval = setInterval(() => {
       setLastSync(new Date());
       // Refresh scanned attendees list every 30 seconds to stay in sync with database
-      if (authChecked) {
+      // The hook will automatically filter by currentEventId
+      if (authChecked && currentEventId) {
         fetchScannedAttendees();
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [authChecked, fetchScannedAttendees]);
+  }, [authChecked, currentEventId, fetchScannedAttendees]);
 
   // Initialize QR code reader
   useEffect(() => {
@@ -223,7 +196,7 @@ export default function QRScanner({
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("name, id")
+        .select("name, id, updated_at")
         .eq("is_active", true)
         .maybeSingle();
 
@@ -233,11 +206,20 @@ export default function QRScanner({
       }
 
       if (data) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/39a2ccae-d45f-4181-af1c-1cb7d7f33d6d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QRScanner.tsx:199',message:'fetchActiveEvent - setting active event',data:{eventName:data.name,eventId:data.id,currentEventId,updatedAt:data.updated_at},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         setCurrentEventId(data.name);
         setCurrentEventName(data.name);
+        // Store activation timestamp to filter attendance records
+        setEventActivatedAt(data.updated_at);
       } else {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/39a2ccae-d45f-4181-af1c-1cb7d7f33d6d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QRScanner.tsx:202',message:'fetchActiveEvent - no active event found',data:{currentEventId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         setCurrentEventId(undefined);
         setCurrentEventName(undefined);
+        setEventActivatedAt(undefined);
       }
     } catch (err) {
       console.error("Failed to fetch active event:", err);
@@ -258,16 +240,21 @@ export default function QRScanner({
           table: "events",
         },
         (payload) => {
-          const oldData = payload.old as { is_active?: boolean; name?: string };
-          const newData = payload.new as { is_active?: boolean; name?: string };
+          const oldData = payload.old as { is_active?: boolean; name?: string; updated_at?: string };
+          const newData = payload.new as { is_active?: boolean; name?: string; updated_at?: string };
 
           // Process when is_active field changes
           if (oldData?.is_active !== newData?.is_active) {
             // Event became active - use payload directly
             if (newData?.is_active === true && newData?.name) {
               const oldEventName = currentEventName;
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/39a2ccae-d45f-4181-af1c-1cb7d7f33d6d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QRScanner.tsx:230',message:'Event activated via realtime subscription',data:{oldEventName,newEventName:newData.name,oldEventId:currentEventId,newEventId:newData.name,updatedAt:newData.updated_at},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
               setCurrentEventId(newData.name);
               setCurrentEventName(newData.name);
+              // Store activation timestamp to filter attendance records
+              setEventActivatedAt(newData.updated_at);
 
               // Show toast only if event actually changed
               if (oldEventName !== newData.name) {
@@ -338,9 +325,16 @@ export default function QRScanner({
   };
 
   // Load existing attendance records on mount and when currentEventId changes
+  // The hook automatically handles clearing and refetching when eventId changes
+  // This effect is redundant but kept for explicit control
   useEffect(() => {
-    if (!authChecked) return;
-    fetchScannedAttendees();
+    if (!authChecked || !currentEventId) return;
+    // The hook will handle fetching, but we can trigger it explicitly
+    // after a brief delay to ensure state has cleared
+    const timeoutId = setTimeout(() => {
+      fetchScannedAttendees();
+    }, 100);
+    return () => clearTimeout(timeoutId);
   }, [currentEventId, authChecked, fetchScannedAttendees]);
 
   // Handle successful scan
@@ -655,7 +649,7 @@ export default function QRScanner({
 
   if (!authChecked) {
     return (
-      <div className="flex flex-col h-screen bg-gray-50 items-center justify-center">
+      <div className="flex flex-col h-[100dvh] bg-gray-50 items-center justify-center">
         <div className="text-gray-600">Loading...</div>
       </div>
     );
@@ -668,7 +662,7 @@ export default function QRScanner({
         className={`px-3 md:px-4 py-1.5 md:py-2 ${getEventGradient(currentEventName)} flex items-center justify-between flex-shrink-0`}
       >
         <h2 className="text-xs md:text-sm font-semibold text-white">
-          Scanned Attendees ({scannedAttendees.length})
+          Scanned Attendees ({totalScannedCount})
         </h2>
         {/* Close button for mobile drawer */}
         <button
@@ -712,7 +706,7 @@ export default function QRScanner({
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-gray-50 overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-50 overflow-hidden">
       {/* Warning if no active event */}
       {!currentEventId && (
         <div className="bg-yellow-500 text-yellow-900 px-4 md:px-6 py-2 text-sm font-medium text-center">
@@ -752,11 +746,11 @@ export default function QRScanner({
               title="Toggle attendees list"
             >
               <List className="w-4 h-4 md:w-5 md:h-5 text-white" />
-              {scannedAttendees.length > 0 && (
+              {totalScannedCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-4 w-4 md:h-5 md:w-5 rounded-full bg-emerald-500 text-white text-[10px] md:text-xs font-semibold flex items-center justify-center">
-                  {scannedAttendees.length > 99
+                  {totalScannedCount > 99
                     ? "99+"
-                    : scannedAttendees.length}
+                    : totalScannedCount}
                 </span>
               )}
             </button>
@@ -918,7 +912,7 @@ export default function QRScanner({
       </>
 
       {/* Mobile FAB (Floating Action Button) */}
-      {!isListOpen && scannedAttendees.length > 0 && (
+      {!isListOpen && totalScannedCount > 0 && (
         <button
           onClick={() => setIsListOpen(true)}
           className={`md:hidden fixed bottom-4 right-4 h-14 w-14 rounded-full ${getEventGradient(currentEventName)} text-white shadow-lg flex items-center justify-center transition-all duration-200 z-30 hover:shadow-xl`}
@@ -927,7 +921,7 @@ export default function QRScanner({
           <div className="flex flex-col items-center">
             <List className="w-5 h-5" />
             <span className="text-[10px] font-semibold mt-0.5">
-              {scannedAttendees.length > 99 ? "99+" : scannedAttendees.length}
+              {totalScannedCount > 99 ? "99+" : totalScannedCount}
             </span>
           </div>
         </button>

@@ -1,31 +1,23 @@
 "use client";
 
-import React, {
-  useState,
-  useCallback,
-  useMemo,
-  useEffect,
-  useRef,
-} from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useCallback, useMemo } from "react";
 import { Download, Upload, Printer, UserPlus, Search } from "lucide-react";
 
-import { deleteMember, type Member } from "@/lib";
 import { useToastContext } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   useMembers,
   useMemberForm,
   useMemberFilters,
   useMemberSort,
   useCSVImport,
+  useMemberActions,
+  useMemberSelection,
+  useMemberDialogs,
+  useMemberSegmentFilter,
+  useMemberFiltersState,
+  useMemberDialogHandlers,
 } from "@/features/members/hooks";
 import {
   MemberTable,
@@ -36,31 +28,48 @@ import {
   MemberSearchDialog,
   PrintDialog,
 } from "@/features/members/components";
-import type {
-  MemberFilters as MemberFiltersType,
-  SortConfig,
-  SortKey,
-} from "@/features/members/types/member.types";
-import { exportMembersToCSV } from "@/features/members/utils/csvExport";
+import type { SortConfig } from "@/features/members/types/member.types";
+import { formValidation } from "@/features/members/utils/formValidation";
 import type { MembersManagementProps } from "@/features/members/types/member.types";
 
+/**
+ * Main component for managing members
+ * Single responsibility: Orchestrate member management features
+ */
 export default function MembersManagement({
   initialData,
 }: MembersManagementProps) {
-  const router = useRouter();
   const { success, error: showError, showAlert } = useToastContext();
 
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
-  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
+  // Filter state management
+  const {
+    filters,
+    setFilters,
+    dateFilters,
+    memoizedDateFilters,
+    handleMembershipTypeChange,
+    handleDateChange,
+  } = useMemberFiltersState();
 
   // Members data management
   const { members, pagination, loading, loadMembers } = useMembers({
     initialMembers: initialData.members,
     initialPagination: initialData.pagination,
     onError: (error) => showError("Error", error, 3000),
+    dateFilters,
   });
+
+  // Reload members when date filters change (but not on initial mount)
+  const isInitialMount = React.useRef(true);
+  React.useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    const currentPage = pagination?.page || 1;
+    loadMembers(currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.dateAddedFrom, filters.dateAddedTo]);
 
   // Form management
   const {
@@ -75,8 +84,6 @@ export default function MembersManagement({
       success(editingMember ? "Updated!" : "Registered!", message, 2000);
       const currentPage = pagination?.page || 1;
       loadMembers(currentPage);
-      setIsEditDialogOpen(false);
-      setIsAddDialogOpen(false);
     },
     onError: (error) => showError("Error", error, 3000),
     onMemberUpdated: () => {
@@ -85,39 +92,94 @@ export default function MembersManagement({
     },
   });
 
-  // Filters
-  const [filters, setFilters] = useState<MemberFiltersType>({
-    searchTerm: "",
-    gender: "all",
-    ageCategory: "all",
-    membershipType: "all",
-  });
-
-  // Separate search state for dialog (doesn't affect table)
-  const [dialogSearchInput, setDialogSearchInput] = useState("");
-
-  const { filteredMembers } = useMemberFilters({
-    members,
-    filters,
-  });
-
-  // Sorting
+  // Filtering and sorting
+  const { filteredMembers } = useMemberFilters({ members, filters });
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const { sortedMembers } = useMemberSort({
     members: filteredMembers,
     sortConfig,
   });
 
-  // Selection
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [openActionRowId, setOpenActionRowId] = useState<string | null>(null);
-  const [showImportModal, setShowImportModal] = useState(false);
+  // Selection management
+  const {
+    selectedIds,
+    allVisibleSelected: allVisibleSelectedRaw,
+    toggleSelect,
+    toggleSelectAllVisible: toggleSelectAllVisibleRaw,
+  } = useMemberSelection(sortedMembers);
+
+  // Wrap toggleSelectAllVisible to match MemberTable's expected signature
+  const toggleSelectAllVisible = useCallback(() => {
+    toggleSelectAllVisibleRaw(sortedMembers);
+  }, [toggleSelectAllVisibleRaw, sortedMembers]);
+
+  // Memoize allVisibleSelected to prevent recalculation on every render
+  const allVisibleSelected = useMemo(
+    () =>
+      sortedMembers.length > 0 &&
+      sortedMembers.every((m) => selectedIds.includes(m.member_id)),
+    [sortedMembers, selectedIds]
+  );
+
+  // Segment filter management
+  const { activeSegment, handleSegmentChange } =
+    useMemberSegmentFilter(setFilters);
+
+  // Dialog handlers
+  const {
+    showImportModal,
+    isSearchDialogOpen,
+    isPrintDialogOpen,
+    dialogSearchInput,
+    setDialogSearchInput,
+    handleOpenImportModal,
+    handleCloseImportModal,
+    handleOpenSearchDialog,
+    handleCloseSearchDialog,
+    handleOpenPrintDialog,
+    handleClosePrintDialog,
+  } = useMemberDialogHandlers();
+
+  // Member actions (delete, export, sort, pagination)
+  const {
+    handlePageChange,
+    handlePageSizeChange,
+    handleDelete,
+    handleExport,
+    handleSort,
+  } = useMemberActions({
+    members,
+    pagination,
+    loadMembers,
+    setSortConfig,
+  });
+
+  // Dialog management (edit/add dialogs)
+  const hasUnsavedChanges = useCallback(
+    () => formValidation.hasUnsavedChanges(formData, editingMember),
+    [formData, editingMember]
+  );
+
+  const {
+    isEditDialogOpen,
+    isAddDialogOpen,
+    setIsEditDialogOpen,
+    setIsAddDialogOpen,
+    openCreateMember,
+    handleEditWithDialog,
+    handleEditDialogCancel,
+    handleAddDialogCancel,
+  } = useMemberDialogs({
+    handleEdit,
+    handleCancel,
+    hasUnsavedChanges,
+  });
 
   // CSV Import
   const { handleFileUpload: handleCSVUpload } = useCSVImport({
     onSuccess: (message) => {
       success("Success!", message, 3000);
-      setShowImportModal(false);
+      handleCloseImportModal();
       const currentPage = pagination?.page || 1;
       loadMembers(currentPage);
     },
@@ -144,325 +206,32 @@ export default function MembersManagement({
         `,
         confirmText: "OK",
       });
-      setShowImportModal(false);
+      handleCloseImportModal();
       const currentPage = pagination?.page || 1;
       loadMembers(currentPage);
     },
   });
 
-  // Handlers
-  const handlePageChange = useCallback(
-    (newPage: number) => {
-      if (newPage < 1 || (pagination && newPage > pagination.totalPages))
-        return;
-      const currentPageSize = pagination?.pageSize || 20;
-      router.push(`/admin/members?page=${newPage}&pageSize=${currentPageSize}`);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    },
-    [router, pagination]
-  );
-
-  const handlePageSizeChange = useCallback(
-    (newPageSize: number) => {
-      router.push(`/admin/members?page=1&pageSize=${newPageSize}`);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    },
-    [router]
-  );
-
-  const handleDelete = useCallback(
-    async (member: Member) => {
-      const confirmed = await showAlert({
-        type: "warning",
-        title: "Delete Member?",
-        message: `Are you sure you want to delete ${member.first_name} ${member.last_name} (${member.member_id})?`,
-        confirmText: "Yes, delete it",
-        cancelText: "Cancel",
-      });
-
-      if (confirmed) {
-        try {
-          await deleteMember(member.id);
-          success("Deleted!", "Member deleted successfully", 2000);
-          const currentPage = pagination?.page || 1;
-          loadMembers(currentPage);
-        } catch (error) {
-          console.error("Failed to delete member:", error);
-          showError("Error", "Failed to delete member", 3000);
-        }
-      }
-    },
-    [showAlert, success, showError, loadMembers, pagination]
-  );
-
-  const handleExport = useCallback(() => {
-    exportMembersToCSV(members);
-  }, [members]);
-
-  const handleSort = useCallback((key: SortKey) => {
-    setSortConfig((prev) => {
-      if (!prev || prev.key !== key) {
-        return { key, direction: "asc" };
-      }
-      if (prev.direction === "asc") {
-        return { key, direction: "desc" };
-      }
-      return null; // third click clears sort
-    });
-  }, []);
-
-  const toggleSelect = useCallback((memberId: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(memberId)
-        ? prev.filter((id) => id !== memberId)
-        : [...prev, memberId]
-    );
-  }, []);
-
-  const toggleSelectAllVisible = useCallback(() => {
-    const visibleIds = sortedMembers.map((m) => m.member_id);
-    const allSelected = visibleIds.every((id) => selectedIds.includes(id));
-    if (allSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
-    } else {
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
-    }
-  }, [sortedMembers, selectedIds]);
-
-  const allVisibleSelected =
-    sortedMembers.length > 0 &&
-    sortedMembers.every((m) => selectedIds.includes(m.member_id));
-
-  // Segment tabs state: maps to ageCategory filter presets
-  type SegmentKey = "ALL" | "MEN" | "WOMEN" | "YAN" | "KKB" | "KIDS";
-  const [activeSegment, setActiveSegment] = useState<SegmentKey>("ALL");
-
-  const handleSegmentChange = (segment: SegmentKey) => {
-    setActiveSegment(segment);
-    setFilters((prev) => {
-      if (segment === "ALL") {
-        return {
-          ...prev,
-          ageCategory: "all",
-          gender: "all",
-        };
-      } else if (segment === "MEN") {
-        return {
-          ...prev,
-          ageCategory: "Men",
-          gender: "male",
-        };
-      } else if (segment === "WOMEN") {
-        return {
-          ...prev,
-          ageCategory: "Women",
-          gender: "female",
-        };
-      } else if (segment === "KIDS") {
-        return {
-          ...prev,
-          ageCategory: "Children",
-          gender: "all",
-        };
-      } else {
-        // YAN, KKB
-        return {
-          ...prev,
-          ageCategory: segment as MemberFiltersType["ageCategory"],
-          gender: "all",
-        };
-      }
-    });
-  };
-
-  const openCreateMember = () => {
-    // reset to create mode
-    handleCancel();
-    setIsAddDialogOpen(true);
-  };
-
-  const handleEditWithDialog = useCallback(
-    async (member: Member) => {
-      try {
-        // Fetch fresh member data from database
-        const { getMemberById } = await import("@/lib");
-        const freshMember = await getMemberById(member.id);
-
-        if (!freshMember) {
-          showError("Error", "Member not found in database", 3000);
-          return;
-        }
-
-        // Use fresh data to populate form
-        handleEdit(freshMember);
-        setIsEditDialogOpen(true);
-      } catch (error: any) {
-        console.error("Failed to fetch member:", error);
-        showError(
-          "Error",
-          error?.message || "Failed to load member data",
-          3000
-        );
-      }
-    },
-    [handleEdit, showError]
-  );
-
-  // Check if form has unsaved changes
-  const hasUnsavedChanges = useCallback(() => {
-    // For adding: check if any required fields are filled
-    if (!editingMember) {
-      return !!(
-        formData.first_name ||
-        formData.last_name ||
-        formData.birthday ||
-        formData.province_code ||
-        formData.city_municipality_code ||
-        formData.barangay_code
-      );
-    }
-
-    // For editing: check if form differs from original member
-    const original = editingMember;
-    const originalBirthday = original.birthday
-      ? original.birthday.split("T")[0]
-      : "";
-    return (
-      formData.first_name !== original.first_name ||
-      formData.middle_name !== (original.middle_name || "") ||
-      formData.last_name !== original.last_name ||
-      formData.birthday !== originalBirthday ||
-      formData.gender !== original.gender ||
-      formData.membership_type !== original.membership_type ||
-      formData.classification !== (original.classification || undefined) ||
-      formData.province_code !== (original.province_code || "") ||
-      formData.city_municipality_code !==
-        (original.city_municipality_code || "") ||
-      formData.barangay_code !== (original.barangay_code || "")
-    );
-  }, [formData, editingMember]);
-
-  const handleEditDialogCancel = useCallback(async (): Promise<boolean> => {
-    if (hasUnsavedChanges()) {
-      const confirmed = await showAlert({
-        type: "warning",
-        title: "Discard changes?",
-        message: "You have unsaved changes. Are you sure you want to cancel?",
-        confirmText: "Yes, discard",
-        cancelText: "No, keep editing",
-      });
-
-      // Explicitly check - if user chose to keep editing, return false to stay open
-      if (confirmed === false) {
-        return false; // User chose "No, keep editing" - stay in the form
-      }
-
-      // Only proceed if user explicitly confirmed (confirmed === true)
-      if (confirmed !== true) {
-        return false; // Safety check - if promise didn't resolve properly, don't close
-      }
-    }
-
-    // User confirmed or no unsaved changes - close the dialog
-    handleCancel();
-    setIsEditDialogOpen(false);
-    return true; // Return true to indicate dialog should close
-  }, [hasUnsavedChanges, showAlert, handleCancel]);
-
-  const handleAddDialogCancel = useCallback(async (): Promise<boolean> => {
-    if (hasUnsavedChanges()) {
-      const confirmed = await showAlert({
-        type: "warning",
-        title: "Discard changes?",
-        message: "You have unsaved changes. Are you sure you want to cancel?",
-        confirmText: "Yes, discard",
-        cancelText: "No, keep editing",
-      });
-
-      // Explicitly check - if user chose to keep editing, return false to stay open
-      if (confirmed === false) {
-        return false; // User chose "No, keep editing" - stay in the form
-      }
-
-      // Only proceed if user explicitly confirmed (confirmed === true)
-      if (confirmed !== true) {
-        return false; // Safety check - if promise didn't resolve properly, don't close
-      }
-    }
-
-    // User confirmed or no unsaved changes - close the dialog
-    handleCancel();
-    setIsAddDialogOpen(false);
-    return true; // Return true to indicate dialog should close
-  }, [hasUnsavedChanges, showAlert, handleCancel]);
+  // Additional state
+  const [openActionRowId, setOpenActionRowId] = useState<string | null>(null);
 
   return (
     <div className="flex flex-1 flex-col print:hidden">
       <div className="@container/main flex flex-1 flex-col gap-3 py-3 md:gap-6 md:py-6">
         {/* Header */}
-        <div className="flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
-          <div>
-            <h1 className="text-lg md:text-3xl font-semibold tracking-tight">
-              Members
-            </h1>
-            <p className="text-xs md:text-base text-muted-foreground">
-              Manage registered members, filters, and QR codes.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              onClick={openCreateMember}
-              className="text-xs md:text-sm"
-            >
-              <UserPlus className="h-3 w-3 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Add member</span>
-              <span className="sm:hidden">Add Member</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleExport}
-              disabled={members.length === 0}
-              className="text-xs md:text-sm"
-            >
-              <Download className="h-3 w-3 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowImportModal(true)}
-              className="text-xs md:text-sm"
-            >
-              <Upload className="h-3 w-3 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Import</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsSearchDialogOpen(true)}
-              className="text-xs md:text-sm"
-            >
-              <Search className="h-3 w-3 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Search</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsPrintDialogOpen(true)}
-              className="text-xs md:text-sm"
-            >
-              <Printer className="h-3 w-3 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Print</span>
-            </Button>
-          </div>
-        </div>
+        <MembersManagementHeader
+          onAddMember={openCreateMember}
+          onExport={handleExport}
+          onImport={handleOpenImportModal}
+          onSearch={handleOpenSearchDialog}
+          onPrint={handleOpenPrintDialog}
+          canExport={members.length > 0}
+        />
 
         {/* CSV Import Modal */}
         <CSVImportModal
           isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
+          onClose={handleCloseImportModal}
           onFileUpload={handleCSVUpload}
         />
 
@@ -473,12 +242,9 @@ export default function MembersManagement({
             isOpen={isSearchDialogOpen}
             searchInput={dialogSearchInput}
             onSearchInputChange={setDialogSearchInput}
-            onClose={() => {
-              setIsSearchDialogOpen(false);
-              setDialogSearchInput(""); // Clear search when closing
-            }}
+            onClose={handleCloseSearchDialog}
             allMembers={members}
-            onMemberClick={(member) => handleEditWithDialog(member)}
+            onMemberClick={handleEditWithDialog}
           />
 
           {/* Members Table with Selector */}
@@ -494,9 +260,13 @@ export default function MembersManagement({
                 activeSegment={activeSegment}
                 onSegmentChange={handleSegmentChange}
                 membershipType={filters.membershipType}
-                onMembershipTypeChange={(type) =>
-                  setFilters((prev) => ({ ...prev, membershipType: type }))
+                onMembershipTypeChange={handleMembershipTypeChange}
+                selectedDate={
+                  filters.dateAddedFrom === filters.dateAddedTo
+                    ? filters.dateAddedFrom
+                    : undefined
                 }
+                onDateChange={handleDateChange}
               />
             </div>
             <CardContent className="flex min-h-0 flex-1 flex-col p-0">
@@ -529,9 +299,11 @@ export default function MembersManagement({
       <PrintDialog
         isOpen={isPrintDialogOpen}
         allMembers={members}
-        onClose={() => setIsPrintDialogOpen(false)}
+        dateFilters={memoizedDateFilters}
+        onClose={handleClosePrintDialog}
       />
 
+      {/* Add/Edit Dialogs */}
       <MemberAddDialog
         isOpen={isAddDialogOpen}
         formData={formData}
@@ -548,6 +320,83 @@ export default function MembersManagement({
         onSubmit={handleSubmit}
         onCancel={handleEditDialogCancel}
       />
+    </div>
+  );
+}
+
+/**
+ * Presentational component for members management header
+ * Single responsibility: Render header UI
+ */
+function MembersManagementHeader({
+  onAddMember,
+  onExport,
+  onImport,
+  onSearch,
+  onPrint,
+  canExport,
+}: {
+  onAddMember: () => void;
+  onExport: () => void;
+  onImport: () => void;
+  onSearch: () => void;
+  onPrint: () => void;
+  canExport: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
+      <div>
+        <h1 className="text-lg md:text-3xl font-semibold tracking-tight">
+          Members
+        </h1>
+        <p className="text-xs md:text-base text-muted-foreground">
+          Manage registered members, filters, and QR codes.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={onAddMember} className="text-xs md:text-sm">
+          <UserPlus className="h-3 w-3 md:h-4 md:w-4" />
+          <span className="hidden sm:inline">Add member</span>
+          <span className="sm:hidden">Add Member</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onExport}
+          disabled={!canExport}
+          className="text-xs md:text-sm"
+        >
+          <Download className="h-3 w-3 md:h-4 md:w-4" />
+          <span className="hidden sm:inline">Export</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onImport}
+          className="text-xs md:text-sm"
+        >
+          <Upload className="h-3 w-3 md:h-4 md:w-4" />
+          <span className="hidden sm:inline">Import</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onSearch}
+          className="text-xs md:text-sm"
+        >
+          <Search className="h-3 w-3 md:h-4 md:w-4" />
+          <span className="hidden sm:inline">Search</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onPrint}
+          className="text-xs md:text-sm"
+        >
+          <Printer className="h-3 w-3 md:h-4 md:w-4" />
+          <span className="hidden sm:inline">Print</span>
+        </Button>
+      </div>
     </div>
   );
 }

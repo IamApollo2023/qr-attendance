@@ -161,7 +161,7 @@ export function AlbumForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{album ? "Edit Album" : "Create Album"}</DialogTitle>
           <DialogDescription>
